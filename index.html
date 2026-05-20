@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>習慣任務｜v15.0.0-stable</title>
+  <meta name="theme-color" content="#101827" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="習慣任務" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512x512.png" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div id="app" class="app-shell">
+  <header class="topbar">
+    <div class="brand"><div class="app-mark">✦</div><div class="brand-text"><h1>習慣任務</h1><p id="syncStatus">v15.0.0-stable｜本機模式</p></div></div>
+    <div class="top-actions"><button id="themeToggle" class="icon-btn" type="button">🌙</button><div id="todayLabel" class="date-pill">今天</div></div>
+  </header>
+  <main>
+    <section id="page-today" class="page active">
+      <div class="hero-card"><div><span class="eyebrow">今日任務板</span><h2 id="heroGreeting">今天先完成一小步</h2><p>今日指定任務看日期是否符合；本期彈性任務只要在週期內完成指定次數即可。</p></div><div class="hero-score"><span id="todayRate">0%</span><small>今日完成率</small></div></div>
+      <div class="stats-grid"><article class="stat-card"><span>今日點數</span><b id="todayPoints">0</b><small>任務取得</small></article><article class="stat-card"><span>目前點數</span><b id="totalPoints">0</b><small>可兌換獎勵</small></article><article class="stat-card"><span>連續天數</span><b id="dailyStreak">0</b><small>每日累積</small></article><article class="stat-card"><span>本期彈性</span><b id="flexSummary">0</b><small>進行中</small></article></div>
+      <section class="panel"><div class="section-head"><h2>每日任務包</h2><span>主線 / 支線 / 加分 / 秘密</span></div><div id="dailyPackGrid" class="pack-grid"></div></section>
+      <section class="panel"><div class="section-head"><h2>今日特殊任務</h2><span>系統每日生成，不使用跳過券</span></div><div id="fixedTaskList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>秘密任務</h2><span>一天型任務，不可換 / 跳過 / 補救</span></div><div id="secretTaskList" class="list"></div></section><section class="panel"><div class="section-head"><h2>本期彈性任務</h2><span>週期內完成指定次數即可</span></div><div id="flexTaskList" class="list"></div></section>
+    </section>
+
+    <section id="page-habits" class="page">
+      <section class="panel"><div class="section-head"><h2>新增 / 編輯習慣</h2><span id="freqDescPreview">每日</span></div>
+        <form id="habitForm" class="form-grid">
+          <input id="habitId" type="hidden" />
+          <div class="wide form-subtitle">1. 基本資料</div>
+          <label>習慣名稱<input id="habitName" required placeholder="例如：運動 20 分鐘" /></label>
+          <label class="wide">習慣說明<textarea id="habitDescription" placeholder="說明這個習慣的目的、完成方式或注意事項"></textarea></label>
+          <label>分類<select id="habitCategory"><option>健康</option><option>知識</option><option>自律</option><option>財務</option><option>關係</option><option>家務</option><option>工作</option><option>情緒</option><option>其他</option></select></label>
+          <label>任務類型<select id="habitPack"><option value="main">主線任務</option><option value="side">支線任務</option><option value="bonus">加分任務</option></select></label>
+          <label>基礎點數<input id="habitPoints" type="number" min="1" value="10" /></label>
+          <label>是否啟用<select id="habitEnabled"><option value="true">啟用</option><option value="false">停用</option></select></label>
+          <label class="wide">備註<textarea id="habitNote" placeholder="其他補充，例如：怎樣算完成、注意事項"></textarea></label>
+          <div class="wide form-subtitle">2. 頻率設定</div>
+          <label>第一層：週期單位<select id="freqType"><option value="daily">每日</option><option value="weekly">每週</option><option value="tenDays">每 10 天</option><option value="biweekly">每雙週</option><option value="monthly">每月</option><option value="quarterly">每季</option><option value="yearly">每年</option></select></label>
+          <label>第二層：規則模式<select id="freqMode"></select></label>
+          <div id="freqDynamic" class="wide freq-box"></div>
+          <div class="wide form-subtitle">3. 完成條件</div>
+          <label>目標量<input id="habitTargetAmount" type="number" min="1" value="1" /></label><label>目標單位<input id="habitTargetUnit" placeholder="次 / 分鐘 / 頁" value="次" /></label><label>最低啟動量<input id="habitMinimumAmount" type="number" min="0" value="0" /></label><label>最低啟動點數<input id="habitMinimumPoints" type="number" min="0" value="0" /></label>
+          <label>一天只能完成一次<select id="habitOncePerDay"><option value="true">是，一天最多一次</option><option value="false">否，可多次完成</option></select></label>
+          <label>可部分完成<select id="habitPartialAllowed"><option value="true">可以，依比例給點</option><option value="false">不可以，只能完成 / 未完成</option></select></label>
+          <label>是否可加倍完成<select id="habitCanDouble"><option value="true">可以，例如運動 / 閱讀 / 整理</option><option value="false">不可以，例如早睡 / 吃藥 / 打卡紀錄</option></select></label>
+          <div class="wide form-subtitle">4. 補救設定</div>
+          <label>允許補救<select id="habitAllowRescue"><option value="true">允許</option><option value="false">不允許</option></select></label><label class="wide">自訂補救提示<input id="habitRescueHint" placeholder="例如：昨天沒運動時，今天可多走 20 分鐘或伸展 10 分鐘"></label>
+          <div class="wide form-subtitle">5. 獎勵設定（單次 / 連續 / 週期 / 累積 / 特殊）</div>
+          <input id="habitRewardRules" type="hidden" value="[]" />
+          <div class="wide reward-builder" id="habitRewardBuilder">
+            <div class="form-grid reward-rule-fields">
+              <label>觸發條件<select id="rewardTriggerType"><option value="singleComplete">每次完成</option><option value="streak">連續完成</option><option value="periodCount">週期內完成</option><option value="totalCount">累積完成</option><option value="minimumComplete">最低啟動完成</option><option value="rescueComplete">補救完成</option><option value="amountComplete">完成指定量</option></select></label>
+              <label>條件數值<input id="rewardConditionValue" type="number" min="1" value="7" /></label>
+              <label>條件期間<select id="rewardConditionPeriod"><option value="none">無</option><option value="daily">每日</option><option value="weekly">每週</option><option value="monthly">每月</option><option value="quarterly">每季</option><option value="yearly">每年</option><option value="customDays">自訂天數</option></select></label>
+              <label>是否重複領取<select id="rewardRepeatable"><option value="false">不可重複</option><option value="true">可依週期重複</option></select></label>
+              <label class="wide">規則備註<input id="rewardDetailNote" placeholder="例如：連續 7 天獎勵"></label>
+            </div>
+            <div class="reward-items-grid">
+              <label class="check-chip"><input id="rewardItemPointsEnabled" type="checkbox">點數 <input id="rewardItemPoints" type="number" min="0" value="50"></label>
+              <label class="check-chip"><input id="rewardItemExpEnabled" type="checkbox">EXP <input id="rewardItemExp" type="number" min="0" value="50"></label>
+              <label class="check-chip"><input id="rewardItemChestEnabled" type="checkbox">寶箱 <select id="rewardItemChest"><option>木寶箱</option><option>銀寶箱</option><option>金寶箱</option><option>雙人寶箱</option></select></label>
+              <label class="check-chip"><input id="rewardItemChestQtyEnabled" type="checkbox" checked hidden><span>寶箱數量</span><input id="rewardItemChestQty" type="number" min="1" value="1"></label>
+              <label class="check-chip"><input id="rewardItemItemEnabled" type="checkbox">道具 <select id="rewardItemItem"><option>抽獎券</option><option>補救券</option><option>加倍卡</option><option>跳過券</option><option>換卡券</option><option>火焰球</option><option>冰凍彈</option><option>地圖換算券</option></select></label>
+              <label class="check-chip"><input id="rewardItemItemQtyEnabled" type="checkbox" checked hidden><span>道具數量</span><input id="rewardItemItemQty" type="number" min="1" value="1"></label>
+              <label class="check-chip"><input id="rewardItemBossEnabled" type="checkbox">Boss 傷害 <input id="rewardItemBoss" type="number" min="0" value="30"></label>
+              <label class="check-chip"><input id="rewardItemMapEnabled" type="checkbox">地圖步數 <input id="rewardItemMap" type="number" min="0" value="10"></label>
+              <label class="check-chip"><input id="rewardItemBadgeEnabled" type="checkbox">徽章 <input id="rewardItemBadge" placeholder="auto 或自訂名稱" value="auto"></label>
+              <label class="check-chip"><input id="rewardItemCoupleEnabled" type="checkbox">雙人點數 <input id="rewardItemCouple" type="number" min="0" value="10"></label>
+              <label class="check-chip"><input id="rewardItemRelationshipEnabled" type="checkbox">關係值 <input id="rewardItemRelationship" type="number" min="0" value="5"></label>
+              <label class="check-chip custom-reward-chip"><input id="rewardItemCustomEnabled" type="checkbox">自訂獎勵 <input id="rewardItemCustom" placeholder="例如：喝一杯喜歡的飲料"></label>
+            </div>
+            <div class="button-row"><button id="addRewardRuleBtn" class="btn ghost" type="button">新增獎勵條件</button><button id="rewardRuleSampleBtn" class="btn ghost" type="button">帶入 7 日範例</button></div>
+            <div id="rewardRulesList" class="list compact reward-rule-list"></div>
+          </div>
+          <div class="wide form-subtitle">6. 雙人公開與共同任務設定</div>
+          <div class="wide helper-box"><b>A. 對方可以看到什麼？</b><small>控制這個習慣在雙人模式中的可見程度。</small></div>
+          <label class="wide">公開範圍<select id="habitVisibility"><option value="public">完全公開：對方看到任務名稱、完成狀態、點數</option><option value="status">只公開狀態：對方只看到完成幾個，不看到名稱</option><option value="secret">秘密任務：完成前不公開，完成後可揭曉</option><option value="private">私密：對方完全看不到</option></select></label>
+          <div class="wide helper-box"><b>B. 是否計入雙人玩法？</b><small>勾選後，完成此習慣會連動共同任務、Boss、雙人地圖或戰報。</small></div>
+          <label class="check-chip"><input id="habitCountForShared" type="checkbox" checked>計入共同任務</label><label class="check-chip"><input id="habitCountForChallenge" type="checkbox" checked>計入雙人挑戰</label><label class="check-chip"><input id="habitCountForBoss" type="checkbox" checked>完成時可攻擊 Boss</label><label class="check-chip"><input id="habitCountForMap" type="checkbox" checked>完成時可推進雙人地圖</label><label class="check-chip"><input id="habitCountForReport" type="checkbox" checked>完成時可寫入雙人戰報</label>
+          <div class="button-row wide"><button class="btn primary" type="submit">儲存習慣</button><button id="resetHabitFormBtn" class="btn ghost" type="button">清空表單</button></div>
+        </form>
+      </section>
+      <section class="panel"><div class="section-head"><h2>習慣清單</h2><span id="habitCount">0 個</span></div><div id="habitList" class="list"></div></section>
+    </section>
+
+    <section id="page-logs" class="page"><section class="panel"><div class="section-head"><h2>完成紀錄</h2><span>支援 frequencyRule</span></div><div id="logList" class="list compact"></div></section></section>
+    <section id="page-wallet" class="page wallet-page-v2">
+      <section class="panel wallet-section"><div class="section-head"><h2>個人點數</h2><span>pointsLedger</span></div><div class="stats-grid"><article class="stat-card"><span>目前個人點數</span><b id="walletPersonalTotal">0</b><small>可兌換個人獎勵</small></article><article class="stat-card"><span>本週獲得</span><b id="walletPersonalWeekEarned">0</b><small>本週正向入帳</small></article><article class="stat-card"><span>本週使用</span><b id="walletPersonalWeekSpent">0</b><small>本週兌換 / 轉換</small></article><article class="stat-card"><span>本月獲得 / 使用</span><b id="walletPersonalMonthNet">0</b><small id="walletPersonalMonthDetail">獲得 0｜使用 0</small></article></div><div id="walletPersonalLedger" class="list compact"></div></section>
+      <section class="panel wallet-section"><div class="section-head"><h2>雙人點數</h2><span>couplePointsLedger</span></div><div class="stats-grid"><article class="stat-card"><span>目前雙人點數</span><b id="walletCoupleTotal">0</b><small>雙人獎勵直接兌換</small></article><article class="stat-card"><span>本週獲得</span><b id="walletCoupleWeekEarned">0</b><small>共同任務 / Boss / 關係互動</small></article><article class="stat-card"><span>本週使用</span><b id="walletCoupleWeekSpent">0</b><small>雙人獎勵兌換</small></article><article class="stat-card"><span>本月獲得 / 使用</span><b id="walletCoupleMonthNet">0</b><small id="walletCoupleMonthDetail">獲得 0｜使用 0</small></article></div><div id="walletCoupleLedger" class="list compact"></div></section>
+      <section class="panel wallet-section"><div class="section-head"><h2>關係值</h2><span>親密值 / 默契值 / 心動值</span></div><div class="stats-grid"><article class="stat-card"><span>親密值</span><b id="walletRelIntimacy">0</b><small id="walletRelIntimacyChange">本週 0｜本月 0</small></article><article class="stat-card"><span>默契值</span><b id="walletRelChemistry">0</b><small id="walletRelChemistryChange">本週 0｜本月 0</small></article><article class="stat-card"><span>心動值</span><b id="walletRelHeartbeat">0</b><small id="walletRelHeartbeatChange">本週 0｜本月 0</small></article><article class="stat-card"><span>已投入願望</span><b id="walletWishInvestedTotal">0</b><small id="walletWishInvestedDetail">親密 0｜默契 0｜心動 0</small></article></div><div id="walletRelationshipLedger" class="list compact"></div></section>
+      <section class="panel wallet-section"><div class="section-head"><h2>道具庫</h2><span>任務 / 遊戲 / Boss / 地圖 / 關係</span></div><div id="itemList" class="wallet-item-groups"></div></section>
+      <section class="panel wallet-section"><div class="section-head"><h2>點數與道具紀錄</h2><span>最近紀錄</span></div><div id="ledgerList" class="list compact"></div></section>
+    </section>
+    <section id="page-rewards" class="page"><section class="panel"><div class="section-head"><h2>新增獎勵</h2><span>集點兌換</span></div><form id="rewardForm" class="form-grid"><input id="rewardId" type="hidden"><label>獎勵名稱<input id="rewardName" required placeholder="例如：手搖飲一杯"></label><label>需要點數<input id="rewardCost" type="number" min="1" value="50"></label><label>分類<select id="rewardCategory"><option>小獎勵</option><option>中獎勵</option><option>大獎勵</option><option>雙人獎勵</option></select></label><label>庫存<input id="rewardStock" type="number" min="0" placeholder="空白=不限" /></label><label>每週上限<input id="rewardWeeklyLimit" type="number" min="0" placeholder="空白=不限" /></label><label class="wide">備註<input id="rewardNote" placeholder="兌換規則或使用說明"></label><button class="btn primary" type="submit">儲存獎勵</button></form></section><section class="panel"><div class="section-head"><h2>獎勵商店</h2><span id="rewardCount">0 個</span></div><div id="rewardList" class="list"></div></section><section class="panel"><div class="section-head"><h2>兌換紀錄</h2><span>可標記已使用 / 備註</span></div><div id="rewardRedemptionList" class="list compact"></div></section></section>
+    <section id="page-game" class="page"><section class="panel game-hero"><div><span class="eyebrow">遊戲中心</span><h2>翻牌、轉盤、寶箱冒險</h2><p>完成任務取得抽獎券、轉盤機會與寶箱，所有遊戲結果都會寫入紀錄並同步。</p></div><button id="quickDropBtn" class="btn light" type="button">領取今日小補給</button></section><section class="panel"><div class="section-head"><h2>翻牌</h2><span>消耗抽獎券，可抽點數 / 道具 / 祝福 / 隱藏任務</span></div><div id="flipArea" class="flip-grid"></div><button id="newFlipBtn" class="btn primary full" type="button">開始翻牌</button><div id="flipResult" class="list compact"></div></section><section class="panel"><div class="section-head"><h2>幸運轉盤</h2><span>完成每日任務包取得轉盤機會，每日最多 3 次</span></div><div id="wheelArea" class="wheel-area"></div><button id="spinWheelBtn" class="btn purple full" type="button">啟動轉盤</button><div id="wheelResult" class="list compact"></div></section><section class="panel"><div class="section-head"><h2>寶箱</h2><span>木 / 銀 / 金 / 雙人寶箱，開箱後寫入 gameLogs</span></div><div id="chestList" class="list"></div></section><section class="panel"><div class="section-head"><h2>遊戲紀錄</h2><span>最近 15 筆</span></div><div id="gameLogList" class="list compact"></div></section></section>
+    <section id="page-couple" class="page">
+      <section class="panel"><div class="section-head"><h2>雙人房間</h2><span>穩定同步 / 邀請碼</span></div><div class="cloud-box" id="roomStatus">尚未加入房間</div><div class="form-grid room-form"><label>房間名稱<input id="roomName" placeholder="例如：我們的生活任務"></label><label>邀請碼<input id="inviteCode" placeholder="輸入對方邀請碼"></label><button id="createRoomBtn" class="btn primary" type="button">建立房間</button><button id="joinRoomBtn" class="btn green" type="button">加入房間</button><button id="leaveRoomBtn" class="btn ghost" type="button">離開房間</button></div><div id="memberList" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>雙人戰況</h2><span>今日 / 本週 / Boss</span></div><div id="coupleBattleStats" class="stats-grid"></div><div id="coupleBossBox" class="detail-box"></div></section>
+      <section class="panel"><div class="section-head"><h2>雙人挑戰</h2><span>雙人版個人習慣任務｜合作 / 競爭 / 各自完成 / 累積達標</span></div>
+        <div class="form-grid couple-challenge-form">
+          <input id="coupleChallengeId" type="hidden">
+          <div class="wide form-subtitle">1. 基本資料</div>
+          <label>名稱<input id="coupleChallengeTitle" placeholder="例如：一週一起早睡 3 天"></label>
+          <label class="wide">說明<textarea id="coupleChallengeDescription" placeholder="挑戰怎樣算完成、兩人要怎麼累積"></textarea></label>
+          <label>分類<select id="coupleChallengeCategory"><option>健康</option><option>知識</option><option>自律</option><option>財務</option><option>關係</option><option>家務</option><option>工作</option><option>情緒</option><option>其他</option></select></label>
+          <label>任務類型<select id="coupleChallengeTaskType"><option value="main">主線</option><option value="side">支線</option><option value="bonus">加分</option></select></label>
+          <label>基礎點數<input id="coupleChallengePoints" type="number" min="0" value="10"></label>
+          <label>挑戰模式<select id="coupleChallengeMode"><option value="cooperate">合作</option><option value="competitive">競爭</option><option value="separate">各自完成</option><option value="cumulative">累積達標</option></select></label>
+          <label class="wide">備註<textarea id="coupleChallengeNote" placeholder="補充規則或想提醒對方的內容"></textarea></label>
+          <div class="wide form-subtitle">2. 頻率設定</div>
+          <label>週期<select id="coupleChallengeFreq"><option>每日</option><option>每週</option><option>每 10 天</option><option>每雙週</option><option>每月</option><option>每季</option><option>每年</option></select></label>
+          <label>週期目標次數<input id="coupleChallengeFreqCount" type="number" min="1" value="1"></label>
+          <small class="wide field-help">此處使用固定欄位產生 frequencyRule，不需要也不可填 JSON。</small>
+          <div class="wide form-subtitle">3. 完成條件</div>
+          <label>目標量<input id="coupleChallengeTarget" type="number" min="1" value="1"></label>
+          <label>單位<input id="coupleChallengeUnit" value="次"></label>
+          <label>一天只能完成一次<select id="coupleChallengeOnce"><option value="true">是</option><option value="false">否</option></select></label>
+          <label>是否可部分完成<select id="coupleChallengePartial"><option value="true">可部分完成</option><option value="false">不可部分完成</option></select></label>
+          <label>是否可加倍完成<select id="coupleChallengeDouble"><option value="true">可加倍完成</option><option value="false">不可加倍完成</option></select></label>
+          <div class="wide form-subtitle">4. 補救設定</div>
+          <label>是否允許補救<select id="coupleChallengeRescue"><option value="true">允許</option><option value="false">不允許</option></select></label>
+          <label>補救是否可加倍<select id="coupleChallengeRescueDouble"><option value="true">可加倍</option><option value="false">不可加倍</option></select></label>
+          <label class="wide">自訂補救提示<input id="coupleChallengeRescueHint" placeholder="例如：用 10 分鐘低門檻版本補救"></label>
+          <div class="wide form-subtitle">5. 獎勵設定</div>
+          <label>完成雙人點數<input id="coupleChallengeRewardCouple" type="number" min="0" value="30"></label>
+          <label>Boss 傷害<input id="coupleChallengeRewardBoss" type="number" min="0" value="30"></label>
+          <label>親密值獎勵<input id="coupleChallengeRewardIntimacy" type="number" min="0" value="0"></label>
+          <label>默契值獎勵<input id="coupleChallengeRewardChemistry" type="number" min="0" value="0"></label>
+          <label>心動值獎勵<input id="coupleChallengeRewardHeartbeat" type="number" min="0" value="0"></label>
+          <label>道具獎勵<select id="coupleChallengeRewardItem"><option value="">無</option><option>雙人寶箱</option><option>Boss 碎片</option><option>抽獎券</option><option>補救券</option><option>加倍卡</option></select></label>
+          <label class="wide">自訂獎勵內容<input id="coupleChallengeRewardCustom" placeholder="例如：一起吃一份甜點"></label>
+          <small class="wide field-help">可新增多筆規則：本版先以固定欄位儲存為 rewardRules 陣列；每筆規則可含雙人點數、Boss 傷害、道具與自訂獎勵。</small>
+          <div class="wide form-subtitle">6. 雙人設定</div>
+          <label>公開範圍<select id="coupleChallengeVisibility"><option value="public">完全公開</option><option value="status">只公開狀態</option><option value="secret">秘密</option><option value="private">私密</option></select></label>
+          <label>是否計入共同任務<select id="coupleChallengeCountShared"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>是否計入 Boss<select id="coupleChallengeCountBoss"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>是否計入雙人戰報<select id="coupleChallengeCountReport"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <button id="saveCoupleChallengeBtn" class="btn purple wide" type="button">新增雙人挑戰</button>
+        </div>
+        <div id="coupleChallengeList" class="list compact"></div>
+      </section>
+      <section class="panel"><div class="section-head"><h2>共同任務</h2><span>雙人版本期彈性任務，自動推進</span></div><div id="sharedQuestList" class="list compact"></div><div id="sharedTaskRequestList" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>指派任務</h2><span>欄位與新增習慣一致，接收方同意後生效</span></div>
+        <div class="form-grid assigned-form">
+          <div class="wide form-subtitle">1. 基本資料</div>
+          <label>任務名稱<input id="assignTitle" placeholder="例如：今晚早點休息"></label>
+          <label class="wide">任務說明<textarea id="assignDesc" placeholder="這個任務怎樣算完成"></textarea></label>
+          <label>分類<select id="assignCategory"><option>健康</option><option>知識</option><option>自律</option><option>財務</option><option>關係</option><option>家務</option><option>工作</option><option>情緒</option><option>其他</option></select></label>
+          <label>任務類型<select id="assignType"><option value="main">主線</option><option value="side">支線</option><option value="bonus">加分</option></select></label>
+          <label>基礎點數<input id="assignPoints" type="number" min="1" value="10"></label>
+          <label class="wide">備註<textarea id="assignNote" placeholder="給對方看的補充說明或注意事項"></textarea></label>
+          <div class="wide form-subtitle">2. 頻率設定</div>
+          <label>週期單位<select id="assignFreq"><option>一次性</option><option>每日</option><option>每週</option><option>每 10 天</option><option>每雙週</option><option>每月</option><option>每季</option><option>每年</option><option>本期</option></select></label>
+          <label>目標次數<input id="assignFrequencyCount" type="number" min="1" value="1"></label>
+          <small class="wide field-help">指派任務使用固定欄位建立 frequencyRule，不需要填 JSON。若需要更複雜規則，接收方接受後可複製成習慣再細調。</small>
+          <div class="wide form-subtitle">3. 完成條件</div>
+          <label>目標量<input id="assignTargetAmount" type="number" min="1" value="1"></label>
+          <label>目標單位<input id="assignTargetUnit" value="次"></label>
+          <label>一天只能完成一次<select id="assignOncePerDay"><option value="true">是，一天最多一次</option><option value="false">否，可多次完成</option></select></label>
+          <label>可部分完成<select id="assignPartial"><option value="true">可以，依比例給點</option><option value="false">不可以，只能完成 / 未完成</option></select></label>
+          <label>可加倍完成<select id="assignCanDouble"><option value="true">可以</option><option value="false">不可以</option></select></label>
+          <div class="wide form-subtitle">4. 補救設定</div>
+          <label>允許補救<select id="assignAllowRescue"><option value="true">允許</option><option value="false">不允許</option></select></label>
+          <label class="wide">自訂補救提示<input id="assignRescueHint" placeholder="接收方補救時看到的提示"></label>
+          <div class="wide form-subtitle">5. 獎勵設定（固定欄位）</div>
+          <input id="assignRewardRules" type="hidden" value="[]">
+          <div class="wide reward-builder">
+            <div class="form-grid reward-rule-fields">
+              <label>觸發條件<select id="assignRewardTriggerType"><option value="singleComplete">每次完成</option><option value="streak">連續完成</option><option value="periodCount">週期內完成</option><option value="totalCount">累積完成</option><option value="minimumComplete">最低啟動完成</option><option value="rescueComplete">補救完成</option><option value="amountComplete">完成指定量</option></select></label>
+              <label>條件數值<input id="assignRewardConditionValue" type="number" min="1" value="1"></label>
+              <label>條件期間<select id="assignRewardConditionPeriod"><option value="none">無</option><option value="daily">每日</option><option value="weekly">每週</option><option value="monthly">每月</option><option value="quarterly">每季</option><option value="yearly">每年</option><option value="customDays">自訂天數</option></select></label>
+            </div>
+            <div class="reward-items-grid">
+              <label class="check-chip"><input id="assignRewardPointsEnabled" type="checkbox" checked>點數 <input id="assignRewardPoints" type="number" min="0" value="10"></label>
+              <label class="check-chip"><input id="assignRewardCoupleEnabled" type="checkbox">雙人點數 <input id="assignRewardCouple" type="number" min="0" value="10"></label>
+              <label class="check-chip"><input id="assignRewardItemEnabled" type="checkbox">道具 <select id="assignRewardItem"><option>抽獎券</option><option>補救券</option><option>加倍卡</option><option>跳過券</option><option>換卡券</option><option>火焰球</option></select></label>
+              <label class="check-chip"><input id="assignRewardCustomEnabled" type="checkbox">自訂獎勵 <input id="assignRewardCustom" placeholder="例如：按摩 10 分鐘"></label>
+            </div>
+            <div class="button-row"><button id="addAssignedRewardRuleBtn" class="btn ghost" type="button">新增指派任務獎勵</button></div>
+            <div id="assignedRewardRulesList" class="list compact reward-rule-list"></div>
+          </div>
+          <div class="wide form-subtitle">6. 指派者額外獎勵</div>
+          <label>額外雙人點數<input id="assignExtraCouplePoints" type="number" min="0" value="0"></label>
+          <label>額外道具<select id="assignExtraItem"><option value="">無</option><option>抽獎券</option><option>補救券</option><option>加倍卡</option><option>火焰球</option><option>能量藥水</option></select></label>
+          <label>額外抽獎券<input id="assignExtraLottery" type="number" min="0" value="0"></label>
+          <label>額外關係值<input id="assignExtraRelationship" type="number" min="0" value="0"></label>
+          <label class="wide">自訂承諾獎勵<input id="assignExtraCustom" placeholder="例如：請喝飲料、按摩 10 分鐘、陪看一集"></label>
+          <div class="wide form-subtitle">7. 雙人設定</div>
+          <label>公開範圍<select id="assignVisibility"><option value="public">完全公開</option><option value="status">只公開狀態</option><option value="secret">秘密任務</option><option value="private">私密</option></select></label>
+          <label>計入共同任務<select id="assignCountShared"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>計入 Boss<select id="assignCountBoss"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>計入雙人戰報<select id="assignCountReport"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <button id="createAssignedTaskBtn" class="btn pink wide" type="button">新增給對方</button>
+        </div><div id="assignedTaskList" class="list compact"></div></section>      <section class="panel"><div class="section-head"><h2>雙人點數與雙人獎勵</h2><span>雙人點數直接兌換的商品｜內建 500+ 項靜態獎勵</span></div><div id="couplePointsBox" class="cloud-box"></div><form id="sharedRewardForm" class="form-grid"><label>獎勵名稱<input id="sharedRewardName" placeholder="例如：一起吃火鍋"></label><label class="wide">獎勵說明<textarea id="sharedRewardDescription" placeholder="說明怎麼兌換或執行"></textarea></label><label>分類<select id="sharedRewardCategory"><option>美食</option><option>放鬆</option><option>小旅行</option><option>居家</option><option>新體驗</option><option>紀念日</option><option>深聊陪伴</option><option>共同成長</option><option>禮物</option><option>其他</option></select></label><label>所需雙人點數<input id="sharedRewardCost" type="number" min="1" value="100"></label><label class="wide">備註<input id="sharedRewardNote" placeholder="可填兌換規則或想法"></label><button id="saveSharedRewardBtn" class="btn pink wide" type="button">新增雙人獎勵</button></form><div id="sharedRewardList" class="list compact"></div><div id="sharedRedemptionList" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>雙人戰報</h2><span>每日 / 每週可複製</span></div><div class="button-row"><button id="generateDailyCoupleReportBtn" class="btn primary" type="button">產生每日戰報</button><button id="generateWeeklyCoupleReportBtn" class="btn purple" type="button">產生每週戰報</button><button id="copyCoupleReportBtn" class="btn ghost" type="button">複製最新戰報</button></div><div id="coupleReportList" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>公開範圍</h2><span>每個習慣可設定</span></div><div id="privacyHabitList" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>秘密任務</h2><span>對方只看到完成秘密任務</span></div><div id="secretTaskBox" class="list compact"></div><div class="button-row"><button id="completeSecretTaskBtn" class="btn pink" type="button">完成今日秘密任務</button><button id="revealSecretReportBtn" class="btn ghost" type="button">產生揭曉戰報</button></div></section>
+      <section class="panel"><div class="section-head"><h2>支援對方</h2><span>鼓勵訊息 / Boss 助攻 / 地圖支援</span></div><form id="supportForm" class="form-grid"><label>送給誰<select id="supportTarget"></select></label><label>類型<select id="supportType"><option value="encourage">鼓勵訊息</option><option value="lotterySupply">抽獎券補給</option><option value="bossAssist">Boss 助攻卡</option><option value="rescueSupport">補救支援券</option><option value="mapSupport">地圖支援券</option><option value="emotionSupply">情緒補給</option><option value="sharedAssist">共同任務助攻</option></select></label><label class="wide">訊息<input id="supportMessage" placeholder="今天辛苦了，我支援你一點能量！"></label><button class="btn pink wide" type="submit">送出支援</button></form><div id="supportInbox" class="list"></div></section>
+    </section>
+    <section id="page-relationship" class="page relationship-page-v2">
+      <section class="panel relation-hero relationship-hero-card"><span class="eyebrow">情侶關係養成</span><h2>今天靠近一點，慢慢累積我們的關係值</h2><p>今日靠近一點、默契挑戰、約會靈感卡與深聊卡都不扣分、不破壞連續天數，只用來增加親密值、默契值、心動值與回顧素材。</p></section>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>1. 關係數值總覽</h2><span>親密 / 默契 / 心動</span></div><div id="relationshipStatsBox" class="stats-grid relationship-stats-grid"></div></section>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>2. 今日靠近一點</h2><span>每天 1 張｜最多換 1 次｜不完成不扣分</span></div><div id="todayCoupleTask" class="relationship-card-slot"></div></section>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>3. 默契挑戰</h2><span>1000+ 題｜不限換｜答案不同也有收穫</span></div><div id="harmonyQuestion" class="question-box relationship-card-slot"></div><div class="form-grid relationship-answer-grid"><label>我的答案<input id="harmonyA" placeholder="先寫下你的答案"></label><label>對方答案<input id="harmonyB" placeholder="對方答案或你猜的答案"></label><button id="checkHarmonyBtn" class="btn purple" type="button">檢查默契</button><button id="nextHarmonyBtn" class="btn ghost" type="button">換一題</button></div><div id="harmonyResult" class="list compact relationship-result"></div></section>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>4. 約會靈感卡 / 深聊卡</h2><span>可收藏、加入願望池、標記完成或已聊過</span></div><div class="relationship-card-tabs"><article><h3>約會靈感卡</h3><p class="muted">抽一張一起想做的小事，完成後可增加親密值、心動值與回顧素材。</p><div id="dateCardBox" class="relationship-card-slot"></div><div class="button-row relationship-actions"><button id="drawDateCardBtn" class="btn primary" type="button">抽約會靈感卡</button><button id="saveDateCardBtn" class="btn ghost" type="button">收藏</button><button id="wishDateCardBtn" class="btn pink" type="button">加入雙人願望池</button><button id="completeDateCardBtn" class="btn green" type="button">標記完成</button></div></article><article><h3>深聊卡</h3><p class="muted">分層級的對話題目，不需要沉重，只是更理解彼此。</p><div id="talkCardBox" class="relationship-card-slot"></div><div class="button-row relationship-actions"><button id="drawTalkCardBtn" class="btn purple" type="button">抽深聊卡</button><button id="saveTalkCardBtn" class="btn ghost" type="button">收藏</button><button id="wishTalkCardBtn" class="btn pink" type="button">加入雙人願望池</button><button id="completeTalkCardBtn" class="btn green" type="button">標記已聊過</button></div></article></div></section>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>5. 雙人願望池</h2><span>使用親密值 / 默契值 / 心動值慢慢投入願望</span></div><div id="coupleWishBalanceBox" class="cloud-box relationship-balance-box"></div><form id="wishForm" class="form-grid relationship-wish-form"><label>願望名稱<input id="wishTitle" placeholder="例如：一起去海邊散步"></label><label>願望說明<textarea id="wishDescription" placeholder="想怎麼完成、為什麼期待，可以簡單寫下來"></textarea></label><label>分類<select id="wishCategory"><option>美食</option><option>放鬆</option><option>小旅行</option><option>居家</option><option>新體驗</option><option>紀念日</option><option>深聊陪伴</option><option>共同成長</option><option>禮物</option><option>其他</option></select></label><label>所需親密值<input id="wishRequiredIntimacy" type="number" min="0" value="120"></label><label>所需默契值<input id="wishRequiredChemistry" type="number" min="0" value="80"></label><label>所需心動值<input id="wishRequiredHeartbeat" type="number" min="0" value="100"></label><label>期待程度<select id="wishLevel"><option value="1">1｜有點想做</option><option value="2">2｜可以安排</option><option value="3" selected>3｜期待</option><option value="4">4｜很期待</option><option value="5">5｜超期待</option></select></label><button class="btn primary" type="submit">新增願望</button></form><div id="wishPoolList" class="list compact relationship-wish-list"></div></section>
+  <div id="wishInvestModal" class="modal hidden" aria-hidden="true"><div class="modal-card relationship-invest-modal"><h3 id="wishInvestTitle">投入關係值</h3><p id="wishInvestInfo" class="muted"></p><div class="form-grid"><label>本次投入親密值<input id="wishInvestIntimacy" type="number" min="0" value="0"></label><label>本次投入默契值<input id="wishInvestChemistry" type="number" min="0" value="0"></label><label>本次投入心動值<input id="wishInvestHeartbeat" type="number" min="0" value="0"></label></div><div class="button-row"><button id="confirmWishInvestBtn" class="btn primary" type="button">確認投入</button><button id="cancelWishInvestBtn" class="btn ghost" type="button">取消</button></div></div></div>
+
+      <section class="panel relationship-main-card"><div class="section-head"><h2>6. 關係回顧</h2><span>整理今天 / 本週的互動、願望與卡片</span></div><div class="button-row relationship-actions"><button id="generateRelationshipDailyBtn" class="btn pink" type="button">產生今日關係回顧</button><button id="generateRelationshipWeeklyBtn" class="btn purple" type="button">產生本週關係回顧</button><button id="saveRelationshipSnapshotBtn" class="btn ghost" type="button">另存快照</button></div><div id="relationshipReviewList" class="list compact"></div><div class="section-head sub-head"><h3>關係寶箱</h3><span>完成關係互動後的驚喜獎勵</span></div><div id="relationshipChestSummary" class="cloud-box relationship-chest-summary"></div><div id="relationshipChestList" class="list compact"></div></section>
+    </section>
+    <section id="page-adventure" class="page"><section class="adventure-hero panel"><span class="eyebrow">冒險地圖 2.0</span><h2>把任務、Boss 道具與地圖支線串成旅程</h2><p>地圖前進由主線任務、連續達成、任務線、共同任務、雙人挑戰與換算券推進；探索不再直接給前進格。</p></section><section class="panel"><div class="section-head"><h2>地圖模式</h2><span>單人 / 雙人</span></div><div class="button-row"><button id="adventureSoloTab" class="btn primary" type="button">單人地圖</button><button id="adventureCoupleTab" class="btn pink" type="button">雙人地圖</button></div><div id="mapBackpack" class="cloud-box"></div></section><section class="panel"><div class="section-head"><h2 id="activeMapTitle">我的冒險地圖</h2><span id="activeMapPlace">起點</span></div><div id="activeMap" class="map-rail"></div></section><section class="panel"><div class="section-head"><h2>冒險紀錄</h2><span id="adventureLogHeadNote">最近 15 筆</span></div><label class="check-row"><input type="checkbox" id="showRevertedAdventure"> 顯示已撤銷紀錄</label><div id="adventureLog" class="list compact"></div></section><section class="panel"><div class="section-head"><h2>每月人生報告</h2><span>冒險 / 任務 / 雙人摘要</span></div><div class="button-row"><button id="generateMonthlyReportBtn" class="btn primary" type="button">產生每月人生報告</button><button id="copyMonthlyReportBtn" class="btn ghost" type="button">複製月報</button></div><div id="monthlyReportBox" class="list compact"></div></section><div id="mapModalBackdrop" class="modal-backdrop" hidden></div><section id="mapNodeModal" class="map-modal" hidden><div class="section-head"><h2 id="mapModalTitle">地點</h2><button id="closeMapModalBtn" class="btn ghost small" type="button">關閉</button></div><div id="mapModalContent"></div></section></section>
+    <section id="page-stats" class="page"><section class="panel"><div class="section-head"><h2>統計總覽</h2><span>任務 / 點數 / 新頻率</span></div><div id="statsOverview" class="stats-grid"></div></section><section class="panel"><div class="section-head"><h2>頻率回顧</h2><span>各習慣週期完成狀態</span></div><div id="frequencyStats" class="list compact"></div></section></section>
+    <section id="page-quests" class="page">
+      <section class="panel adventure-hero"><span class="eyebrow">舊資料總覽</span><h2>舊任務線 / 長期獎勵相容區</h2><p>長期獎勵已融合到習慣頁。請到「習慣」頁的習慣卡片或編輯表單中新增、編輯與領取長期獎勵。</p></section>
+      <section class="panel"><div class="section-head"><h2>唯讀總覽</h2><span>長期獎勵請到習慣頁新增或編輯</span></div><div id="questHubList" class="list"></div></section>
+    </section>
+    <section id="page-challenges" class="page">
+      <section class="panel game-hero"><div><span class="eyebrow">挑戰中心</span><h2>挑戰管理與總覽</h2><p>集中管理個人挑戰、雙人挑戰、系統挑戰，以及已完成 / 已放棄挑戰。雙人挑戰與雙人頁使用同一份資料。</p></div></section>
+      <section class="panel"><div class="section-head"><h2>快速新增</h2><span>個人挑戰 / 雙人挑戰</span></div><div class="button-row"><button class="btn primary" data-page="quests" type="button">新增個人挑戰</button><button id="resetHubCoupleChallengeBtn" class="btn pink" type="button">新增雙人挑戰</button></div><p class="hint">個人挑戰目前沿用任務線管理；雙人挑戰在本頁與雙人頁同步顯示。</p></section>
+      <section class="panel"><div class="section-head"><h2>雙人挑戰新增 / 編輯</h2><span>欄位與習慣一致，只多挑戰模式</span></div>
+        <div class="form-grid couple-challenge-form challenge-hub-form">
+          <input id="hubCoupleChallengeId" type="hidden">
+          <h3 class="wide">1. 基本資料</h3>
+          <label>名稱<input id="hubCoupleChallengeTitle" placeholder="例如：一週一起早睡 3 天"></label>
+          <label class="wide">說明<textarea id="hubCoupleChallengeDescription" placeholder="挑戰怎樣算完成、兩人要怎麼累積"></textarea></label>
+          <label>分類<select id="hubCoupleChallengeCategory"><option>健康</option><option>知識</option><option>自律</option><option>財務</option><option>關係</option><option>家務</option><option>工作</option><option>情緒</option><option>其他</option></select></label>
+          <label>任務類型<select id="hubCoupleChallengeTaskType"><option value="main">主線</option><option value="side">支線</option><option value="bonus">加分</option></select></label>
+          <label>基礎點數<input id="hubCoupleChallengePoints" type="number" min="0" value="10"></label>
+          <label>挑戰模式<select id="hubCoupleChallengeMode"><option value="cooperate">合作</option><option value="competitive">競爭</option><option value="separate">各自完成</option><option value="cumulative">累積達標</option></select></label>
+          <label class="wide">備註<textarea id="hubCoupleChallengeNote" placeholder="補充規則或想提醒對方的內容"></textarea></label>
+          <h3 class="wide">2. 頻率設定</h3>
+          <label>週期<select id="hubCoupleChallengeFreq"><option>每日</option><option>每週</option><option>每 10 天</option><option>每雙週</option><option>每月</option><option>每季</option><option>每年</option></select></label>
+          <label>週期目標次數<input id="hubCoupleChallengeFreqCount" type="number" min="1" value="1"></label>
+          <h3 class="wide">3. 完成條件</h3>
+          <label>目標量<input id="hubCoupleChallengeTarget" type="number" min="1" value="1"></label>
+          <label>單位<input id="hubCoupleChallengeUnit" value="次"></label>
+          <label>一天只能完成一次<select id="hubCoupleChallengeOnce"><option value="true">是</option><option value="false">否</option></select></label>
+          <label>是否可部分完成<select id="hubCoupleChallengePartial"><option value="true">可部分完成</option><option value="false">不可部分完成</option></select></label>
+          <label>是否可加倍完成<select id="hubCoupleChallengeDouble"><option value="true">可加倍完成</option><option value="false">不可加倍完成</option></select></label>
+          <h3 class="wide">4. 補救設定</h3>
+          <label>是否允許補救<select id="hubCoupleChallengeRescue"><option value="true">允許</option><option value="false">不允許</option></select></label>
+          <label>補救是否可加倍<select id="hubCoupleChallengeRescueDouble"><option value="true">可加倍</option><option value="false">不可加倍</option></select></label>
+          <label class="wide">自訂補救提示<input id="hubCoupleChallengeRescueHint" placeholder="例如：用 10 分鐘低門檻版本補救"></label>
+          <h3 class="wide">5. 獎勵設定</h3>
+          <label>完成雙人點數<input id="hubCoupleChallengeRewardCouple" type="number" min="0" value="30"></label>
+          <label>Boss 傷害<input id="hubCoupleChallengeRewardBoss" type="number" min="0" value="30"></label>
+          <label>親密值獎勵<input id="hubCoupleChallengeRewardIntimacy" type="number" min="0" value="0"></label>
+          <label>默契值獎勵<input id="hubCoupleChallengeRewardChemistry" type="number" min="0" value="0"></label>
+          <label>心動值獎勵<input id="hubCoupleChallengeRewardHeartbeat" type="number" min="0" value="0"></label>
+          <label>道具獎勵<select id="hubCoupleChallengeRewardItem"><option value="">無</option><option>雙人寶箱</option><option>Boss 碎片</option><option>抽獎券</option><option>補救券</option><option>加倍卡</option></select></label>
+          <label class="wide">自訂獎勵內容<input id="hubCoupleChallengeRewardCustom" placeholder="例如：一起吃一份甜點"></label>
+          <h3 class="wide">6. 雙人設定</h3>
+          <label>公開範圍<select id="hubCoupleChallengeVisibility"><option value="public">完全公開</option><option value="status">只公開狀態</option><option value="secret">秘密</option><option value="private">私密</option></select></label>
+          <label>是否計入共同任務<select id="hubCoupleChallengeCountShared"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>是否計入 Boss<select id="hubCoupleChallengeCountBoss"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <label>是否計入雙人戰報<select id="hubCoupleChallengeCountReport"><option value="true">計入</option><option value="false">不計入</option></select></label>
+          <button id="saveHubCoupleChallengeBtn" class="btn purple wide" type="button">新增雙人挑戰</button>
+        </div>
+      </section>
+      <section class="panel"><div class="section-head"><h2>個人挑戰</h2><span>任務線 / 個人挑戰</span></div><div id="personalChallengeHubList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>雙人挑戰</h2><span>與雙人頁共用 coupleChallenges</span></div><div id="challengeHubList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>系統挑戰</h2><span>內建挑戰模板</span></div><div id="systemChallengeHubList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>已完成挑戰</h2><span>自動彙整</span></div><div id="completedChallengeHubList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>已放棄挑戰</h2><span>可複製後重開</span></div><div id="abandonedChallengeHubList" class="list"></div></section>
+      <section class="panel"><div class="section-head"><h2>每週 Boss</h2><span>完成任務扣 HP，擊敗可開寶箱</span></div><div id="challengeBossBox" class="detail-box"></div></section>
+      <section class="panel"><div class="section-head"><h2>連續獎勵</h2><span>3 / 7 / 14 / 30 天</span></div><div id="streakRewardHubList" class="list compact"></div></section>
+    </section>
+    <section id="page-reports" class="page">
+      <section class="panel relation-hero"><span class="eyebrow">戰報中心</span><h2>每週回顧、每月人生報告、雙人戰報</h2><p>把你的進度整理成可複製分享的文字戰報。</p></section>
+      <section class="panel"><div class="section-head"><h2>產生戰報</h2><span>可複製文字</span></div><div class="button-row"><button id="generateWeeklyReviewBtn" class="btn purple" type="button">產生本週戰報</button><button id="generateMonthlyReportBtn" class="btn primary" type="button">產生每月人生報告</button><button id="generateDailyCoupleReportBtn" class="btn pink" type="button">產生雙人每日戰報</button><button id="generateWeeklyCoupleReportBtn" class="btn pink" type="button">產生雙人每週戰報</button></div></section>
+      <section class="panel"><div class="section-head"><h2>最近戰報</h2><span>週報 / 月報 / 雙人</span></div><div id="reportHubList" class="list compact"></div></section>
+    </section>
+    <section id="page-help" class="page">
+      <section class="panel adventure-hero"><span class="eyebrow">使用說明</span><h2>第一次使用與常見問題</h2><p>快速理解任務、點數、遊戲、雙人房間、備份與同步。</p></section>
+      <section class="panel"><div class="section-head"><h2>新手指南</h2><span>可離線查看</span></div><div id="helpGuideBox" class="list"></div></section>
+    </section>
+    <section id="page-settings" class="page">
+      <section class="panel relation-hero"><span class="eyebrow">設定</span><h2>帳號、同步與外觀設定</h2><p>設定頁只放登入、同步狀態、Firebase、房間與外觀設定。JSON / CSV 備份請到備份頁。</p></section>
+      <section class="panel"><div class="section-head"><h2>帳號與登入</h2><span>Google / 使用者 ID</span></div><div id="accountSettingsBox" class="list compact"></div><div class="button-row"><button id="authToggleBtn" class="btn primary" type="button">Google 登入</button></div></section>
+      <section class="panel"><div class="section-head"><h2>同步狀態</h2><span>狀態 / 上次同步 / 最後錯誤</span></div><div id="firebaseStatus" class="cloud-box warn">尚未登入</div><div class="button-row"><button id="syncNowBtn" class="btn green" type="button">立即同步</button><button id="restorePreSyncBackupBtn" class="btn ghost" type="button">還原同步前備份</button><button class="btn ghost" type="button" data-page="backup">前往備份頁</button></div></section>
+      <section class="panel"><div class="section-head"><h2>Firebase 狀態</h2><span>多文件同步診斷摘要</span></div><div id="firebaseDetailBox" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>外觀設定</h2><span>深色模式 / 主題</span></div><div class="setting-line"><span>外觀</span><select id="themeSelect"><option value="light">淺色</option><option value="dark">深色</option></select></div></section>
+      <section class="panel"><div class="section-head"><h2>房間設定</h2><span>roomId / 房間資料狀態</span></div><div id="roomSettingsBox" class="list compact"></div><div class="button-row"><button id="leaveRoomBtn" class="btn red" type="button">離開房間</button></div></section>
+      <section class="panel"><details class="sync-diagnostics"><summary>展開進階同步診斷</summary><div id="syncDebugPanel" class="cloud-box"></div></details></section>
+    </section>
+    <section id="page-backup" class="page">
+      <section class="panel relation-hero"><span class="eyebrow">備份</span><h2>JSON 完整備份與 CSV 分表備份</h2><p>備份頁只放匯出、匯入、匯入前備份與清空資料。登入、房間、Firebase 診斷請到設定頁。</p></section>
+      <section class="panel"><div class="section-head"><h2>JSON 完整備份</h2><span>適合完整還原</span></div><div class="button-row"><button id="exportJsonBtn" class="btn ghost" type="button">匯出 JSON</button><label class="btn ghost file-btn">匯入 JSON<input id="importJsonInput" type="file" accept="application/json"></label></div><div class="hint">JSON 適合完整備份。匯入前建議先匯出 JSON，系統也會自動建立匯入前備份。</div></section>
+      <section class="panel"><div class="section-head"><h2>CSV 分表備份</h2><span>適合 Excel / Notion 留存</span></div><div id="csvTableTools" class="list compact"></div></section>
+      <section class="panel"><div class="section-head"><h2>匯入前備份</h2><span>還原最近一次匯入或同步前備份</span></div><div id="backupSafetyBox" class="list compact"></div><div class="button-row"><button id="restorePreImportBackupBtn" class="btn ghost" type="button">還原匯入前備份</button><button id="restorePreSyncBackupBtnBackup" class="btn ghost" type="button">還原同步前備份</button></div></section>
+      <section class="panel danger-panel"><div class="section-head"><h2>清空資料</h2><span>危險操作，必須二次確認</span></div><p class="hint warn-text">清空前請先匯出 JSON。清空本機資料會刪除目前瀏覽器內的資料；若已登入並同步，請確認是否需要另外處理雲端資料。</p><div class="button-row"><button id="resetAllBtn" class="btn red" type="button">清空本機資料</button><button id="clearCloudDataBtn" class="btn red" type="button">清空雲端資料</button></div></section>
+      <section class="panel"><div class="section-head"><h2>備份說明</h2><span>怎麼選備份方式</span></div><div id="backupGuideBox" class="list compact"></div></section>
+    </section>
+  </main>
+  <div id="itemUseBackdrop" class="modal-backdrop" hidden></div><section id="itemUseModal" class="map-modal" hidden><div class="section-head"><h2 id="itemUseTitle">使用道具</h2><button id="cancelUseItemBtn" class="btn ghost small" type="button">關閉</button></div><div id="itemUseContent" class="list compact"></div><div class="button-row"><button id="confirmUseItemBtn" class="btn primary" type="button">確認使用</button><button id="cancelUseItemBtn2" class="btn ghost" type="button">取消</button></div></section>
+  <nav class="bottom-tabs">
+    <button class="tab active" data-page="today"><b>☀️</b><span>今天</span></button>
+    <button class="tab" data-page="habits"><b>🌱</b><span>習慣</span></button>
+    <button class="tab" data-page="couple"><b>👥</b><span>雙人</span></button>
+    <button class="tab" data-page="relationship"><b>💞</b><span>關係</span></button>
+    <button class="tab" data-page="adventure"><b>🗺️</b><span>冒險</span></button>
+    <button id="moreToggle" class="tab more-tab" type="button"><b>✨</b><span>更多</span></button>
+  </nav>
+  <div id="moreBackdrop" class="more-backdrop" hidden></div>
+  <aside id="moreMenu" class="more-menu" aria-label="更多頁面" hidden>
+    <div class="more-menu-head"><div><b>更多功能</b><span>完整功能都保留在這裡</span></div><button id="moreClose" type="button">×</button></div>
+    <div class="more-grid">
+      <button class="more-item" data-page="game"><b>🎮</b><span>遊戲</span></button>
+      <button class="more-item" data-page="logs"><b>🧾</b><span>紀錄</span></button>
+      <button class="more-item" data-page="wallet"><b>💰</b><span>錢包</span></button>
+      <button class="more-item" data-page="rewards"><b>🛍️</b><span>商店</span></button>
+      <button class="more-item" data-page="challenges"><b>⚔️</b><span>挑戰</span></button>
+      <button class="more-item" data-page="reports"><b>📰</b><span>戰報</span></button>
+      <button class="more-item" data-page="stats"><b>📊</b><span>統計</span></button>
+      <button class="more-item" data-page="settings"><b>⚙️</b><span>設定</span></button>
+      <button class="more-item" data-page="backup"><b>💾</b><span>備份</span></button>
+      <button class="more-item" data-page="help"><b>❓</b><span>說明</span></button>
+    </div>
+  </aside>
+</div><div id="toast" class="toast"></div><script type="module" src="./js/app.js"></script></body>
+</html>

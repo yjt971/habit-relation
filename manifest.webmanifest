@@ -1,0 +1,16 @@
+{
+  "name": "習慣任務 v15 穩定版",
+  "short_name": "習慣v15",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff7fb",
+  "theme_color": "#8b5cf6",
+  "description": "v15.0.0-stable：多文件同步、設定 / 備份拆分、統計戰報摘要修正。",
+  "icons": [
+    {"src":"./icons/icon-192x192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./icons/icon-512x512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
+    {"src":"./icons/apple-touch-icon.png","sizes":"180x180","type":"image/png"}
+  ]
+}
