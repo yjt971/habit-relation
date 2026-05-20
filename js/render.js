@@ -134,7 +134,7 @@ function renderHeader(){$('#todayLabel').textContent=new Date().toLocaleDateStri
 function addDaysToKey(key,n){const d=new Date(key+'T00:00:00');d.setDate(d.getDate()+n);return todayKey(d)}
 function diffDaysKey(a,b){const da=new Date(a+'T00:00:00'),db=new Date(b+'T00:00:00');return Math.floor((da-db)/86400000)}
 function challengeDaysFromRule(rule){const base=Number(rule?.intervalDays)||({daily:1,weekly:7,tenDays:10,biweekly:14,monthly:30,quarterly:90,yearly:365}[rule?.type]||7);return base+Math.ceil(base/3)}
-function stableFlexKey(t){return `${t.id}:${state.missions.flex.periodKeys?.[t.id]||periodKey(t.frequencyRule)}`}
+function stableFlexKey(t){const raw=state.missions.flex.periodKeys?.[t.id]||periodKey(t.frequencyRule);const key=String(raw||'');return key.startsWith(`${t.id}:`)?key:`${t.id}:${key}`}
 function flexMetaForTask(t){const raw=state.missions.flex.periodMeta?.[t.id]||periodMeta(t.frequencyRule);const total=challengeDaysFromRule(t.frequencyRule);const start=raw.periodStart||todayKey();const elapsed=Math.max(1,diffDaysKey(todayKey(),start)+1);const end=addDaysToKey(start,total-1);const remain=Math.max(0,diffDaysKey(end,todayKey()));return {...raw,totalDays:total,dayNo:Math.min(total,elapsed),challengeEnd:end,remainingDays:remain}}
 function habitDueList(){return (state.habits||[]).filter(h=>!h.deletedAt&&h.taskSource!=='system')}
 

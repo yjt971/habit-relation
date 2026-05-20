@@ -1,6 +1,6 @@
 import { state, saveState, replaceState, PHASE1_TABLES, KEY, nowIso } from './state.js';
 
-export const firebaseConfig={apiKey: "AIzaSyCH027zWsaR-S8qCRDCcaDcvGFP0BQGbUA",authDomain: "habitrelation.firebaseapp.com",projectId: "habitrelation",storageBucket: "habitrelation.firebasestorage.app",messagingSenderId: "830734839933",appId: "1:830734839933:web:1795a56d42e68512e08114",measurementId: "G-D98929ZP63"};
+export const firebaseConfig={apiKey:'',authDomain:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
 
 let app=null,auth=null,db=null,modules=null,authBound=false;
 let applyingRemote=false,syncTimer=null,autoTimer=null,inFlight=null;

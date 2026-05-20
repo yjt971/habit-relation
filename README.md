@@ -1,10 +1,10 @@
-# 習慣任務｜v15.0.0-stable
+# 習慣任務｜v15.0.0-stable-hotfix1-hotfix1
 
 本物件包為 Phase 10A～10D、Phase 11A～11F、Phase 12A～12G、Phase 13A～13G、Phase 14A～14F 總驗收後輸出的穩定版。系統保留個人習慣、今天任務、雙人頁、關係頁、冒險地圖、錢包、挑戰、戰報、統計、設定、備份、CSV / JSON、Firebase 多文件同步與 PWA。
 
 ## 版本資訊
 
-- App version：`v15.0.0-stable`
+- App version：`v15.0.0-stable-hotfix1-hotfix1`
 - Service worker cache：`habit-mission-v15-stable-v1`
 - 同步架構：多文件 `meta + table chunks`
 - 內建卡池：靜態資料，不背景同步到 Firebase
