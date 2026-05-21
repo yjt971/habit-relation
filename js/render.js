@@ -1,5 +1,5 @@
 import { state,todayKey,isDone,currentPoints,todayPoints,calculateStreak,flexTaskKey,ensureDailyPackRecord,ensureMissionTaskRows,PHASE1_TABLES,saveState,addPoints,currentCouplePoints,ensureCoupleWeekBoss,bossDayInfo,createDailySecretTask,updateCoupleStats,ensureSharedTasks } from './state.js';
-import { dailyMissionPool, flexMissionPool, places,objects,harmonyQuestions, defaultSharedRewards, defaultCoupleChallenges } from './data.js';
+import { dailyMissionPool, flexMissionPool, places,objects,harmonyQuestions, defaultSharedRewards, defaultCoupleChallenges, chemistryChoiceCards, relationshipLetterPrompts } from './data.js';
 import { periodKey,periodLabel,frequencyDescription,periodMeta } from './frequency.js';
 import { $,esc,item,empty,btn } from './ui.js';
 import { firebaseSummary } from './firebase.js';
@@ -100,36 +100,38 @@ export function ensureMissions(){
 export function selectedDailyTasks(){ensureMissions();return state.missions.daily.ids.map(id=>dailySpecialPool().find(x=>x.id===id)).filter(Boolean)}
 export function selectedFlexTasks(){ensureMissions();return state.missions.flex.ids.map(id=>flexActivePool().find(x=>x.id===id)).filter(Boolean)}
 export function applyTheme(){document.body.classList.toggle('dark',state.settings.theme==='dark');$('#themeToggle').textContent=state.settings.theme==='dark'?'☀️':'🌙';$('#themeSelect')&&($('#themeSelect').value=state.settings.theme)}
+const pageRenderers={
+  'page-today':renderToday,'page-habits':renderHabits,'page-logs':renderLogs,'page-wallet':renderWallet,'page-rewards':renderRewards,'page-game':renderGame,'page-couple':renderCouple,'page-relationship':renderRelationship,'page-adventure':renderAdventure,'page-quests':renderQuestHub,'page-challenges':renderChallengeHub,'page-reports':renderReportHub,'page-help':renderHelpGuide,'page-stats':renderStats,'page-settings':renderSettings,'page-backup':renderBackup
+};
 function renderAllInternal(){
-  ensureMissions();
-  applyTheme();
-  renderHeader();
+  try{ensureMissions()}catch(e){console.error('mission render guard failed',e)}
+  try{applyTheme()}catch(e){console.error('theme render guard failed',e)}
+  try{renderHeader()}catch(e){console.error('header render failed',e)}
   const active=document.querySelector('.page.active');
   const id=active?.id||'page-today';
-  if(id==='page-today') renderToday();
-  else if(id==='page-habits') renderHabits();
-  else if(id==='page-logs') renderLogs();
-  else if(id==='page-wallet') renderWallet();
-  else if(id==='page-rewards') renderRewards();
-  else if(id==='page-game') renderGame();
-  else if(id==='page-couple') renderCouple();
-  else if(id==='page-relationship') renderRelationship();
-  else if(id==='page-adventure') renderAdventure();
-  else if(id==='page-quests') renderQuestHub();
-  else if(id==='page-challenges') renderChallengeHub();
-  else if(id==='page-reports') renderReportHub();
-  else if(id==='page-help') renderHelpGuide();
-  else if(id==='page-stats') renderStats();
-  else if(id==='page-settings') renderSettings();
-  else if(id==='page-backup') renderBackup();
+  const fn=pageRenderers[id]||renderToday;
+  try{fn()}
+  catch(e){
+    console.error(`render failed for ${id}`,e);
+    const target=active?.querySelector?.('.panel, .list, .stats-grid')||active;
+    if(target)target.insertAdjacentHTML('afterbegin',`<div class="cloud-box warn page-render-error"><b>此區塊暫時無法更新</b><br>其他頁面與同步狀態仍可使用。請先到備份頁匯出 JSON 後重新整理。</div>`);
+  }
 }
-export function safeRender(){
-  try{return renderAllInternal()}
-  catch(e){console.error('render failed',e);const el=document.querySelector('#syncStatus');if(el)el.textContent='畫面更新失敗，請重新整理或匯出備份';}
-}
+export function safeRender(){return renderAllInternal()}
 export function renderAll(){return safeRender()}
 export function renderCurrentPage(){return safeRender()}
-function renderHeader(){$('#todayLabel').textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'});$('#syncStatus').textContent=state.room.inviteCode?`房間：${state.room.inviteCode}｜${firebaseSummary()}`:firebaseSummary()}
+function renderHeader(){
+  const today=$('#todayLabel'); if(today)today.textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  const status=$('#syncStatus'); if(!status)return;
+  const fb=state.firebase||{}, sm=state.syncMeta||{}, room=state.room||{};
+  const logged=!!fb.user;
+  const base=logged?`已登入：${fb.user?.email||fb.user?.name||fb.user?.uid||'Google 使用者'}`:'未登入：本機保存';
+  const sync=fb.syncStatus||sm.lastSyncResult||'本機模式';
+  const last=fb.lastSyncAt||sm.lastSuccessfulSyncAt||sm.lastCloudWriteAt||'';
+  const err=fb.syncError||sm.lastSyncError||'';
+  const roomText=(room.inviteCode||room.id)&&String(room.inviteCode||room.id)!=='local'?`房間：${room.inviteCode||room.id}｜`:'';
+  status.textContent=`${roomText}${base}｜${sync}${last?'｜'+new Date(last).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):''}${err?'｜錯誤：'+err:''}`;
+}
 
 function addDaysToKey(key,n){const d=new Date(key+'T00:00:00');d.setDate(d.getDate()+n);return todayKey(d)}
 function diffDaysKey(a,b){const da=new Date(a+'T00:00:00'),db=new Date(b+'T00:00:00');return Math.floor((da-db)/86400000)}
@@ -339,8 +341,8 @@ function renderRelationship(){
   const swapped=!!state.currentRelationshipCards?.closeTodaySwapped;
   const closeActions=(closeDone?btn('今日已完成','ghost small','disabled'):btn('完成今日靠近一點','pink small','id="completeCoupleTaskBtn"'))+(swapped?btn('今日已換過','ghost small','disabled'):btn('今天換一題','ghost small','id="changeCoupleTaskBtn"'));
   const closeBox=$('#todayCoupleTask');if(closeBox)closeBox.innerHTML=relationshipCardItem(close,closeActions,{type:'closeToday',done:closeDone,pressureFree:true});
-  const chem=cardById('chemistryChallengeCards',state.currentRelationshipCards?.chemistryId)||state.chemistryChallengeCards?.[0];
-  const hq=$('#harmonyQuestion');if(hq)hq.innerHTML=chem?relationshipCardItem(chem,'',{type:'chemistry',pressureFree:true,compact:true}):empty('尚無默契挑戰。');
+  const hq=$('#harmonyQuestion');if(hq)hq.innerHTML=renderChemistryChoiceChallenge();
+  renderRelationshipMailbox();
   const date=cardById('dateIdeaCards',state.currentRelationshipCards?.dateIdeaId)||state.dateIdeaCards?.[0];
   const talk=cardById('deepTalkCards',state.currentRelationshipCards?.deepTalkId)||state.deepTalkCards?.[0];
   const dateBox=$('#dateCardBox');if(dateBox)dateBox.innerHTML=relationshipCardItem(date,'',{type:'dateIdea',pressureFree:true,compact:true});
@@ -354,8 +356,53 @@ function renderRelationship(){
   const chestSourceCount=weekLogs.filter(l=>['completeCloseToday','chemistrySuccess','chemistryTry','completeDateIdea','completeDeepTalk','completeWish','relationshipReview'].includes(l.action)).length;const availableChests=(state.relationshipChests||[]).filter(x=>!x.deletedAt&&x.status!=='opened').length;const weeklyChests=(state.relationshipChests||[]).filter(x=>!x.deletedAt&&new Date(x.createdAt||x.date||0)>=new Date(Date.now()-7*86400000)).length;const chestSummary=$('#relationshipChestSummary');if(chestSummary)chestSummary.innerHTML=`<div class="balance-line"><b>本週獲得關係寶箱：${weeklyChests} 個</b><span>來源：完成 ${chestSourceCount} 次關係互動</span></div><div class="balance-line"><span>寶箱可能包含親密值、默契值、心動值、雙人點數、約會靈感卡、深聊卡、關係稱號或關係徽章。</span><span>${availableChests>0?'有寶箱可開啟':'目前沒有待開啟寶箱'}</span></div>`;const ch=$('#relationshipChestList');if(ch)ch.innerHTML=(state.relationshipChests||[]).filter(x=>!x.deletedAt).slice(0,12).map(c=>{const opened=c.status==='opened';const actions=opened?btn('已開啟','ghost small','disabled'):(btn('開啟','pink small',`data-open-relationship-chest="${c.id}"`)+btn('前往錢包','ghost small','data-page="wallet"'));return item(esc(c.name||'關係寶箱'),`${opened?'已開啟':'可開啟'}｜來源：${esc(c.source||'關係互動')}\n可獲得：${esc(c.rewardLabel||'親密值 / 默契值 / 心動值 / 雙人點數')}`,actions,opened)}).join('')||empty('完成今日靠近一點、默契挑戰、約會靈感卡、深聊卡、雙人願望或每週關係回顧後，可取得關係寶箱。');
   const reviews=$('#relationshipReviewList');if(reviews)reviews.innerHTML=(state.relationshipReviews||[]).filter(x=>!x.deletedAt).slice(0,5).map(r=>item(`${r.scope==='weekly'?'每週':'每日'}關係回顧`,`${r.periodKey||r.date||''}\n${esc(r.latestText||r.text||'')}`,btn('複製','ghost small',`data-copy-relationship-review="${r.id}"`)+btn('另存快照','ghost small',`data-save-relationship-review="${r.id}"`))).join('')||empty('尚未產生關係回顧。');
 }
+
+function getMeForRelationship(){return state.firebase?.user?.uid||state.currentUserId||'me'}
+function getPartnerForRelationship(){const me=getMeForRelationship();const room=state.room||{};const ids=[...(room.memberIds||[]),...(Array.isArray(room.members)?room.members.map(x=>x.id||x.uid||x):[]),...Object.keys(room.members||{}),...(state.users||[]).map(u=>u.id)].filter(Boolean).map(String);return ids.find(id=>id!==me&&id!=='me')||state.partnerUserId||'user2'}
+function getRoomForRelationship(){return state.room?.inviteCode||state.room?.id||state.firebase?.roomId||'local'}
+function chemistryAnswersFor(sessionId){return (state.chemistryChallengeAnswers||[]).filter(a=>a.sessionId===sessionId&&!a.deletedAt)}
+function hasChemistryAnswer(sessionId,userId){return chemistryAnswersFor(sessionId).some(a=>String(a.userId)===String(userId))}
+function chemistrySessionsToday(){const roomId=getRoomForRelationship();return (state.chemistryChallengeSessions||[]).filter(s=>!s.deletedAt&&s.roomId===roomId&&s.dateKey===todayKey())}
+function pendingChemistryForMe(){const me=getMeForRelationship();return chemistrySessionsToday().filter(s=>(s.status||'waiting')==='waiting'&&!hasChemistryAnswer(s.id,me)).sort((a,b)=>(String(a.dateKey).localeCompare(String(b.dateKey))||Number(a.sequenceNo||0)-Number(b.sequenceNo||0)||String(a.createdAt||'').localeCompare(String(b.createdAt||''))))}
+function pendingChemistryForPartner(){const partner=getPartnerForRelationship();const me=getMeForRelationship();return chemistrySessionsToday().filter(s=>(s.status||'waiting')==='waiting'&&hasChemistryAnswer(s.id,me)&&!hasChemistryAnswer(s.id,partner))}
+function currentChemistryChoiceCard(){const c=state.currentRelationshipCards=state.currentRelationshipCards||{};if(c.date!==todayKey())ensureRelationshipCardsForToday();let card=chemistryChoiceCards.find(x=>x.id===c.chemistryChoiceId);if(!card){card=chemistryChoiceCards[Math.abs(hash(`${todayKey()}_${getMeForRelationship()}_chemistryChoice`))%chemistryChoiceCards.length];c.chemistryChoiceId=card?.id||'';}return card||chemistryChoiceCards[0]}
+
+function currentLetterPrompt(){const c=state.currentRelationshipCards=state.currentRelationshipCards||{};if(c.date!==todayKey())ensureRelationshipCardsForToday();let prompt=relationshipLetterPrompts.find(x=>x.id===c.letterPromptId);if(!prompt){prompt=relationshipLetterPrompts[Math.abs(hash(`${todayKey()}_${getMeForRelationship()}_letterPrompt`))%relationshipLetterPrompts.length];c.letterPromptId=prompt?.id||'';}return prompt||relationshipLetterPrompts[0]}
+function letterReplies(letterId){return (state.coupleLetterReplies||[]).filter(r=>r.letterId===letterId&&!r.deletedAt).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))}
+function letterCard(l,mode='inbox'){const replies=letterReplies(l.id);const prompt=`${l.promptType==='question'?'問答':'信件'}｜${esc(l.promptTitle||'今日小信箱')}`;const body=`${prompt}\n${esc(l.content||'')}\n狀態：${l.status||'sent'}｜${l.isFavorite?'已收藏':'未收藏'}｜${l.createdAt?String(l.createdAt).slice(0,16):''}${replies.length?`\n回覆：${replies.map(r=>`${r.fromUserId===getMeForRelationship()?'我':'對方'}：${r.content}`).join(' / ')}`:''}`;const actions=[];if(mode==='inbox'){if(l.status!=='read'&&l.status!=='replied')actions.push(btn('標記已讀','green small',`data-read-letter="${l.id}"`));actions.push(btn(l.isFavorite?'取消收藏':'收藏','ghost small',`data-favorite-letter="${l.id}"`));actions.push(btn('回覆','pink small',`data-reply-letter="${l.id}"`));}else{actions.push(btn(l.isFavorite?'取消收藏':'收藏','ghost small',`data-favorite-letter="${l.id}"`));}return item(`${mode==='sent'?'寄出':'收到'}：${esc(l.promptTitle||'今日小信箱')}`,body,actions.join(''),l.status==='read'||l.status==='replied')}
+function renderRelationshipMailbox(){
+  const prompt=currentLetterPrompt();
+  const box=$('#relationshipMailboxBox');
+  if(box)box.innerHTML=`<article class="relationship-letter-card"><div class="rel-badge-row"><span class="rel-badge">${prompt.type==='question'?'問答':'信件'}</span><span class="rel-badge">${esc(prompt.category||'日常')}</span><span class="rel-badge">${esc(prompt.intensity||'輕量')}</span></div><h3>${esc(prompt.title||'寫一封信給對方。')}</h3><p>${esc(prompt.content||'不比對答案，只留下你想給對方的話。')}</p><p class="no-pressure">不完成不扣分，也不會拿來比對答案。</p></article>`;
+  const me=getMeForRelationship(), partner=getPartnerForRelationship(), room=getRoomForRelationship();
+  const letters=(state.coupleLetters||[]).filter(l=>!l.deletedAt&&l.roomId===room);
+  const inbox=letters.filter(l=>String(l.toUserId)===String(me)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,8);
+  const sent=letters.filter(l=>String(l.fromUserId)===String(me)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,8);
+  const fav=letters.filter(l=>l.isFavorite&&(String(l.toUserId)===String(me)||String(l.fromUserId)===String(me))).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''))).slice(0,8);
+  const inboxBox=$('#letterInboxList'); if(inboxBox)inboxBox.innerHTML=inbox.map(l=>letterCard(l,'inbox')).join('')||empty('目前尚未收到小信。寫一封信給對方，累積你們的回憶。');
+  const sentBox=$('#letterSentList'); if(sentBox)sentBox.innerHTML=sent.map(l=>letterCard(l,'sent')).join('')||empty('目前尚未寄出小信。可以用上方題目寫一段話給對方。');
+  const favBox=$('#letterFavoriteList'); if(favBox)favBox.innerHTML=fav.map(l=>letterCard(l,'favorite')).join('')||empty('尚未收藏小信。收到對方的信後可以收藏保存。');
+}
+function chemistryResultLine(s){if(!s)return '';const ans=chemistryAnswersFor(s.id);if((s.status||'')!=='completed')return '等待對方回答中。';const matched=s.result==='matched';const lines=ans.map(a=>`${a.userId===getMeForRelationship()?'我':'對方'}：${esc(a.optionText||s.options?.[a.optionIndex]||'')}`).join('｜');return `${matched?'默契成功，答案相同！':'答案不同也沒關係，這是更了解彼此的機會。'} ${lines}`}
+function renderChemistryChoiceChallenge(){
+  const me=getMeForRelationship();
+  const pendingForMe=pendingChemistryForMe();
+  const waitingForPartner=pendingChemistryForPartner();
+  const completed=chemistrySessionsToday().filter(s=>s.status==='completed');
+  const matched=completed.filter(s=>s.result==='matched').length;
+  const rate=completed.length?Math.round(matched/completed.length*100):0;
+  const latestMine=chemistrySessionsToday().filter(s=>hasChemistryAnswer(s.id,me)).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')))[0];
+  const session=pendingForMe[0]||null;
+  const card=session?{id:session.cardId,title:session.questionTitle,options:session.options||[],category:session.category,intensity:session.intensity}:currentChemistryChoiceCard();
+  const options=(card?.options||[]).slice(0,4);
+  while(options.length<4)options.push(`選項 ${options.length+1}`);
+  const badges=[card.category||'默契挑戰',card.intensity||'輕量','4 選 1'].map(x=>`<span class="rel-badge">${esc(x)}</span>`).join('');
+  const status=`<div class="chemistry-status-grid"><span>我待回答 ${pendingForMe.length}</span><span>待對方回答 ${waitingForPartner.length}</span><span>今日完成 ${completed.length}</span><span>成功率 ${rate}%</span></div>`;
+  const result=latestMine&&!pendingForMe.length?`<div class="chemistry-result-note">${esc(chemistryResultLine(latestMine))}</div>`:'';
+  return `<article class="item relationship-card chemistry-choice-card"><div class="item-title">${esc(card?.title||'今天想猜猜對方的想法嗎？')}</div><div class="item-sub rel-badge-row">${badges}<span class="no-pressure">不完成不扣分，答案不同也不扣分</span></div>${status}<div class="chemistry-options">${options.map((o,i)=>btn(`${String.fromCharCode(65+i)}. ${esc(o)}`,'ghost chemistry-option',`data-chemistry-option="${i}" ${session?`data-chemistry-session="${session.id}"`:''}`)).join('')}</div><div class="button-row relationship-actions"><button class="btn pink small" type="button" id="submitChemistryChoiceBtn">送出答案</button><button class="btn ghost small" type="button" id="nextChemistryChoiceBtn" ${session?'disabled':''}>換一題</button></div><input type="hidden" id="selectedChemistryOption" value=""><input type="hidden" id="activeChemistrySession" value="${session?esc(session.id):''}"><p class="hint">${session?'請回答這一題，雙方都有答案後會自動比對。':'你可以先選一題回答；送出後會等待對方回答同一題。'}</p>${waitingForPartner.length?`<p class="hint">你已送出 ${waitingForPartner.length} 題，等待對方依序回答。</p>`:''}${result}</article>`;
+}
 function relationshipLogsThisWeek(){const since=new Date();since.setDate(since.getDate()-7);return (state.relationshipLogs||[]).filter(l=>!l.deletedAt&&new Date(l.date||l.createdAt||0)>=since)}
-function ensureRelationshipCardsForToday(){const c=state.currentRelationshipCards=state.currentRelationshipCards||{};if(c.date!==todayKey()){c.date=todayKey();c.closeTodaySwapped=false;c.closeTodayId=pickRelationshipCard('closeTodayCards','closeToday');c.chemistryId=pickRelationshipCard('chemistryChallengeCards','chemistry');c.dateIdeaId=pickRelationshipCard('dateIdeaCards','dateIdea');c.deepTalkId=pickRelationshipCard('deepTalkCards','deepTalk');}}
+function ensureRelationshipCardsForToday(){const c=state.currentRelationshipCards=state.currentRelationshipCards||{};if(c.date!==todayKey()){c.date=todayKey();c.closeTodaySwapped=false;c.closeTodayId=pickRelationshipCard('closeTodayCards','closeToday');c.chemistryId=pickRelationshipCard('chemistryChallengeCards','chemistry');c.chemistryChoiceId=chemistryChoiceCards[Math.abs(hash(`${todayKey()}_${getMeForRelationship()}_chemistryChoice`))%chemistryChoiceCards.length]?.id||'';c.letterPromptId=relationshipLetterPrompts[Math.abs(hash(`${todayKey()}_${getMeForRelationship()}_letterPrompt`))%relationshipLetterPrompts.length]?.id||'';c.dateIdeaId=pickRelationshipCard('dateIdeaCards','dateIdea');c.deepTalkId=pickRelationshipCard('deepTalkCards','deepTalk');}}
 function cardById(table,id){return (state[table]||[]).find(x=>x.id===id&&!x.deletedAt)}
 function recentSemanticKeys(type,days=14){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);return new Set((state.cardDrawLogs||[]).filter(l=>l.type===type&&new Date(l.date||l.createdAt||0)>=cutoff&&!l.deletedAt).map(l=>l.semanticKey).filter(Boolean))}
 function pickRelationshipCard(table,type){const recent=recentSemanticKeys(type,14);const pool=(state[table]||[]).filter(c=>c.enabled!==false&&!recent.has(c.semanticKey)&&!recent.has(c.ideaKey));const src=pool.length?pool:(state[table]||[]);return (src.sort((a,b)=>hash(todayKey()+type+a.id)-hash(todayKey()+type+b.id))[0]||{}).id||''}
@@ -595,14 +642,16 @@ function renderSettings(){
   if(restoreBtn){restoreBtn.style.display=sm.hasPreSyncBackup||sm.preSyncBackupAt?'inline-flex':'inline-flex';restoreBtn.textContent=sm.preSyncBackupAt?`還原同步前備份（${new Date(sm.preSyncBackupAt).toLocaleString('zh-TW')}）`:'還原同步前備份'}
   const account=$('#accountSettingsBox');
   if(account)account.innerHTML=item('Google 登入狀態',logged?'已登入':'未登入 / 本機模式')+item('使用者 ID',fb.user?.uid||state.currentUserId||'local')+item('使用者名稱',fb.user?.email||fb.user?.name||'本機使用者');
+  const rm=sm.roomMembership||{};
   const firebaseDetail=$('#firebaseDetailBox');
-  if(firebaseDetail)firebaseDetail.innerHTML=item('是否已設定 Firebase',fb.configured||fb.isConfigured||logged?'已設定或已登入':'尚未確認 / 本機模式')+item('Firestore path',sm.cloudPath||`users/${fb.user?.uid||state.currentUserId||'local'}`)+item('多文件同步狀態',sm.multiDocStatus||'Phase 13F 多文件 / 分表 / chunk 同步保留')+item('chunk count',String(sm.lastCloudChunkCount||sm.chunkCount||0))+item('estimated sync size',sm.estimatedSyncSize?`${sm.estimatedSyncSize} bytes`:'尚無估算')+item('最後錯誤',sm.lastSyncError||fb.syncError||'無');
+  if(firebaseDetail)firebaseDetail.innerHTML=item('是否已設定 Firebase',fb.configured||fb.isConfigured||logged?'已設定或已登入':'尚未確認 / 本機模式')+item('Firestore path',sm.cloudPath||`users/${fb.user?.uid||state.currentUserId||'local'}`)+item('多文件同步狀態',sm.multiDocStatus||'Phase 13F 多文件 / 分表 / chunk 同步保留')+item('chunk count',String(sm.lastCloudChunkCount||sm.chunkCount||0))+item('estimated sync size',sm.estimatedSyncSize?`${sm.estimatedSyncSize} bytes`:'尚無估算')+item('room membership',rm.roomId?`${rm.safeRulesReady?'可改用安全版 rules':'尚未準備好'}｜roomDoc：${rm.hasRoomDoc?'有':'無'}｜members 包含我：${rm.currentUidInMembers?'是':'否'}｜memberIds 包含我：${rm.currentUidInMemberIds?'是':'否'}｜${esc(rm.message||'')}`:'尚未檢查 room membership')+item('最後錯誤',sm.lastSyncError||fb.syncError||rm.error||'無');
   const roomBox=$('#roomSettingsBox');
-  if(roomBox)roomBox.innerHTML=item('目前 roomId',room.inviteCode||room.id||'local')+item('房間名稱',room.name||'本機模式')+item('房間資料狀態',room.inviteCode?`房間成員 ${Array.isArray(room.members)?room.members.length:0} 人｜可同步雙人資料`:'尚未建立或加入房間');
+  const memberCount=Array.isArray(room.memberIds)?room.memberIds.length:(room.members&&typeof room.members==='object'?Object.keys(room.members).length:Array.isArray(room.members)?room.members.length:0);
+  if(roomBox)roomBox.innerHTML=item('目前 roomId',room.inviteCode||room.id||rm.roomId||'local')+item('房間名稱',room.name||'本機模式')+item('房間資料狀態',(room.inviteCode||room.id||rm.roomId)?`房間成員 ${memberCount} 人｜可同步雙人資料`:'尚未建立或加入房間')+item('安全版 rules 準備狀態',rm.safeRulesReady?'已準備好，可在備份後依文件改用安全版 rules':'尚未準備好，請先讓雙方都登入並加入房間')+item('membership 診斷',`room 文件：${rm.hasRoomDoc?'有':'無'}｜members 有我：${rm.currentUidInMembers?'是':'否'}｜memberIds 有我：${rm.currentUidInMemberIds?'是':'否'}｜對方：${rm.partnerUidKnown?rm.partnerUid:'尚未取得'}`);
   const sd=$('#syncDebugPanel');
   if(sd){
     const rows=[
-      ['Firebase 登入狀態',logged?'已登入':'未登入 / 本機模式'],['userId',fb.user?.uid||state.currentUserId||'尚無'],['roomId',room.inviteCode||room.id||'local'],['local updatedAt',state.updatedAt||'尚無'],['cloud updatedAt',sm.lastCloudUpdatedAt||'尚無'],['cloud path',sm.cloudPath||'尚無'],['chunk count',sm.lastCloudChunkCount||0],['estimated sync size',sm.estimatedSyncSize?`${sm.estimatedSyncSize} bytes`:'尚無'],['dirty',sm.dirty?'是':'否'],['syncing',sm.syncing||fb.syncStatus==='同步中'?'是':'否'],['last read',sm.lastCloudReadAt||'尚無'],['last write',sm.lastCloudWriteAt||'尚無'],['last successful sync',sm.lastSuccessfulSyncAt||fb.lastSyncAt||'尚無'],['最後同步結果',sm.lastSyncResult||fb.syncStatus||'尚無'],['最後錯誤',sm.lastSyncError||fb.syncError||'無'],['本機資料筆數摘要',PHASE1_TABLES.filter(t=>!['closeTodayCards','chemistryChallengeCards','dateIdeaCards','deepTalkCards'].includes(t)).map(t=>`${tableName(t)}:${Array.isArray(state[t])?state[t].length:state[t]?1:0}`).slice(0,18).join('｜')],['同步架構','Phase 13F 多文件 / 分表 / chunk 同步，避免單一 Firestore document 超過 1 MiB']
+      ['Firebase 登入狀態',logged?'已登入':'未登入 / 本機模式'],['userId',fb.user?.uid||state.currentUserId||'尚無'],['roomId',room.inviteCode||room.id||rm.roomId||'local'],['room doc',rm.hasRoomDoc?'有':'無'],['members 包含目前 uid',rm.currentUidInMembers?'是':'否'],['memberIds 包含目前 uid',rm.currentUidInMemberIds?'是':'否'],['對方 uid',rm.partnerUidKnown?rm.partnerUid:'尚未取得'],['安全版 rules 可用',rm.safeRulesReady?'是':'否'],['membership 訊息',rm.message||'尚無'],['local updatedAt',state.updatedAt||'尚無'],['cloud updatedAt',sm.lastCloudUpdatedAt||'尚無'],['cloud path',sm.cloudPath||'尚無'],['chunk count',sm.lastCloudChunkCount||0],['estimated sync size',sm.estimatedSyncSize?`${sm.estimatedSyncSize} bytes`:'尚無'],['dirty',sm.dirty?'是':'否'],['syncing',sm.syncing||fb.syncStatus==='同步中'?'是':'否'],['last read',sm.lastCloudReadAt||'尚無'],['last write',sm.lastCloudWriteAt||'尚無'],['last successful sync',sm.lastSuccessfulSyncAt||fb.lastSyncAt||'尚無'],['最後同步結果',sm.lastSyncResult||fb.syncStatus||'尚無'],['最後錯誤',sm.lastSyncError||fb.syncError||'無'],['本機資料筆數摘要',PHASE1_TABLES.filter(t=>!['closeTodayCards','chemistryChallengeCards','dateIdeaCards','deepTalkCards'].includes(t)).map(t=>`${tableName(t)}:${Array.isArray(state[t])?state[t].length:state[t]?1:0}`).slice(0,18).join('｜')],['同步架構','Phase 13F 多文件 / 分表 / chunk 同步，避免單一 Firestore document 超過 1 MiB']
     ];
     sd.innerHTML=`${rows.map(r=>`<div class="debug-row"><b>${r[0]}</b><span>${esc(String(r[1]))}</span></div>`).join('')}<div class="button-row"><button id="syncNowBtn2" class="btn green small" type="button">手動立即同步</button><button id="forceLocalCloudBtn" class="btn red small" type="button">強制以本機覆蓋雲端</button><button id="forceCloudLocalBtn" class="btn purple small" type="button">強制以雲端覆蓋本機</button></div><p class="hint">強制覆蓋會二次確認。若同步失敗，請先到備份頁匯出 JSON。</p>`;
   }
@@ -620,4 +669,4 @@ function renderBackup(){
   const csvEl=$('#csvTableTools');if(csvEl)csvEl.innerHTML=csvTables.map(t=>`<article class="item"><div class="item-top"><div><div class="item-title">${tableName(t)}</div><div class="item-sub">CSV 匯入 / 匯出｜目前 ${Array.isArray(state[t])?state[t].length:(state[t]?1:0)} 筆</div></div><div class="actions"><button class="btn ghost small" type="button" data-export-csv="${t}">匯出 CSV</button><label class="btn ghost small file-btn">匯入 CSV<input type="file" accept=".csv,text/csv" data-import-csv="${t}"></label></div></div></article>`).join('')||empty('目前沒有可匯出的資料表。');
 }
 
-function tableName(t){return {users:'使用者資料表',habits:'習慣資料表',habitLogs:'習慣完成紀錄表',dailyTasks:'今日指定任務表',dailyPacks:'每日任務包表',flexTasks:'本期彈性任務表',secretTasks:'秘密任務表',pointsLedger:'點數紀錄表',rewards:'獎勵資料表',rewardRedemptions:'獎勵兌換紀錄表',gameItems:'遊戲道具表',gameLogs:'遊戲紀錄表',quests:'任務線資料表',questProgress:'任務線進度表',achievements:'成就徽章表',streakRewards:'連續獎勵表',weeklyReviews:'每週回顧表',monthlyReports:'每月報告表',settings:'設定資料表',syncMeta:'同步狀態表',supportLogs:'支援紀錄表',relationshipLogs:'關係紀錄表',adventureLogs:'冒險紀錄表',importedStats:'匯入統計表',levelData:'角色等級表',attributeLogs:'屬性成長紀錄表',storyChapters:'章節劇情表',couplePointsLedger:'雙人點數紀錄表',sharedQuests:'共同任務表',sharedQuestProgress:'共同任務進度表',sharedRewards:'雙人獎勵表',sharedRewardRedemptions:'雙人兌換紀錄表',coupleStats:'雙人戰況表',coupleSecretTasks:'秘密任務表',coupleChallenges:'雙人挑戰表',coupleBosses:'每週 Boss 表',coupleBattleReports:'雙人戰報表',coupleTitles:'雙人稱號表',sharedTasks:'共同任務表',sharedTaskProgress:'共同任務進度表',coupleChallengeProgress:'雙人挑戰進度表',bossDamageLogs:'Boss 傷害紀錄表',bossRewards:'Boss 獎勵表',bossBattleReports:'Boss 戰報表',reports:'戰報主表',reportSnapshots:'戰報快照表',bossItems:'Boss 道具表',mapNodes:'地圖節點表',mapProgress:'地圖進度表',mapSideQuests:'地圖支線表',mapSideQuestProgress:'地圖支線進度表',mapExploreObjects:'地圖探索物件表',mapExploreLogs:'地圖探索紀錄表',mapHiddenQuests:'地圖隱藏支線表',mapQuestProgress:'地圖隱藏支線進度表',mapTravelCoupons:'地圖換算券表',mapRewards:'地圖獎勵表',abilityEffects:'能力效果表',mapInventory:'地圖背包表',mapInventoryLogs:'地圖背包紀錄表',mapExploreDailyLogs:'地圖每日探索表',activeItemEffects:'啟用中道具效果表',closeTodayCards:'今日靠近一點卡池',chemistryChallengeCards:'默契挑戰卡池',dateIdeaCards:'約會靈感卡池',deepTalkCards:'深聊卡池',relationshipStats:'關係數值表',coupleWishPool:'雙人願望池',coupleWishLogs:'願望紀錄表',relationshipChests:'關係寶箱表',relationshipChestLogs:'關係寶箱紀錄表',mapTravelLogs:'地圖旅行紀錄表',relationshipReviews:'關係回顧表',relationshipReviewSnapshots:'關係回顧快照表',cardDrawLogs:'抽卡紀錄表',cardCollectionLogs:'卡片收藏紀錄表'}[t]||t}
+function tableName(t){return {users:'使用者資料表',habits:'習慣資料表',habitLogs:'習慣完成紀錄表',dailyTasks:'今日指定任務表',dailyPacks:'每日任務包表',flexTasks:'本期彈性任務表',secretTasks:'秘密任務表',pointsLedger:'點數紀錄表',rewards:'獎勵資料表',rewardRedemptions:'獎勵兌換紀錄表',gameItems:'遊戲道具表',gameLogs:'遊戲紀錄表',quests:'任務線資料表',questProgress:'任務線進度表',achievements:'成就徽章表',streakRewards:'連續獎勵表',weeklyReviews:'每週回顧表',monthlyReports:'每月報告表',settings:'設定資料表',syncMeta:'同步狀態表',supportLogs:'支援紀錄表',relationshipLogs:'關係紀錄表',adventureLogs:'冒險紀錄表',importedStats:'匯入統計表',levelData:'角色等級表',attributeLogs:'屬性成長紀錄表',storyChapters:'章節劇情表',couplePointsLedger:'雙人點數紀錄表',sharedQuests:'共同任務表',sharedQuestProgress:'共同任務進度表',sharedRewards:'雙人獎勵表',sharedRewardRedemptions:'雙人兌換紀錄表',coupleStats:'雙人戰況表',coupleSecretTasks:'秘密任務表',coupleChallenges:'雙人挑戰表',coupleBosses:'每週 Boss 表',coupleBattleReports:'雙人戰報表',coupleTitles:'雙人稱號表',sharedTasks:'共同任務表',sharedTaskProgress:'共同任務進度表',coupleChallengeProgress:'雙人挑戰進度表',bossDamageLogs:'Boss 傷害紀錄表',bossRewards:'Boss 獎勵表',bossBattleReports:'Boss 戰報表',reports:'戰報主表',reportSnapshots:'戰報快照表',bossItems:'Boss 道具表',mapNodes:'地圖節點表',mapProgress:'地圖進度表',mapSideQuests:'地圖支線表',mapSideQuestProgress:'地圖支線進度表',mapExploreObjects:'地圖探索物件表',mapExploreLogs:'地圖探索紀錄表',mapHiddenQuests:'地圖隱藏支線表',mapQuestProgress:'地圖隱藏支線進度表',mapTravelCoupons:'地圖換算券表',mapRewards:'地圖獎勵表',abilityEffects:'能力效果表',mapInventory:'地圖背包表',mapInventoryLogs:'地圖背包紀錄表',mapExploreDailyLogs:'地圖每日探索表',activeItemEffects:'啟用中道具效果表',closeTodayCards:'今日靠近一點卡池',chemistryChallengeCards:'默契挑戰卡池',dateIdeaCards:'約會靈感卡池',deepTalkCards:'深聊卡池',relationshipStats:'關係數值表',coupleWishPool:'雙人願望池',coupleWishLogs:'願望紀錄表',relationshipChests:'關係寶箱表',relationshipChestLogs:'關係寶箱紀錄表',mapTravelLogs:'地圖旅行紀錄表',relationshipReviews:'關係回顧表',relationshipReviewSnapshots:'關係回顧快照表',cardDrawLogs:'抽卡紀錄表',cardCollectionLogs:'卡片收藏紀錄表',chemistryChallengeSessions:'默契挑戰 Session 表',chemistryChallengeAnswers:'默契挑戰答案表',coupleLetters:'今日小信箱信件表',coupleLetterReplies:'小信箱回覆表',coupleLetterLogs:'小信箱操作紀錄表'}[t]||t}

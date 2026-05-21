@@ -147,8 +147,45 @@ function buildDeepTalkCards(){
   const styles=['輕鬆回答即可，不需要一次說得很完整。','可以各說一個例子，聽完再回應。','不用急著解決，只要先理解彼此。','可以用 1 到 10 分描述感受。','先說感受，再慢慢說原因。','適合睡前或散步時慢慢聊。','遠距時也可以用語音完成。','不想聊太深時，可以只回答一小段。'];
   const arr=[];let i=0;for(const c of cats){for(const q of questions){for(const st of styles){arr.push(makeCard('deepTalk','深聊',c,q,`${st}這張卡的目標是更理解彼此，不是辯論對錯。`,i,[st]));i++;if(arr.length>=1040)return arr;}}}return arr;
 }
+
+function buildChemistryChoiceCards(){
+  const categories=['飲食偏好','休假安排','情緒需求','生活習慣','約會偏好','旅行想像','小禮物','壓力處理','未來計畫','回憶偏好','居家日常','溝通方式'];
+  const stems=[
+    '如果今晚臨時有空，對方最可能想怎麼度過？','如果今天要一起吃晚餐，對方最可能選哪一種？','對方壓力大時，最希望你先做哪件事？','如果週末只能安排一個活動，對方最想選哪個？','對方最近最容易被哪種小事感動？','如果要送對方一個小驚喜，哪一種最合適？','對方最想把哪件日常小事變成習慣？','如果今天要拍一張合照，對方最可能喜歡哪種風格？','對方累的時候，最想收到哪一句話？','如果可以安排半天小旅行，對方最可能想去哪裡？','對方最近最需要哪一種支持？','如果兩個人一起學一件事，對方最可能想選什麼？','對方覺得理想約會最重要的是什麼？','如果今天只能喝一杯飲料，對方最可能選哪種？','對方最想把哪個共同回憶再重溫一次？','如果家裡多一個放鬆角落，對方最想放什麼？'
+  ];
+  const optionSets=[
+    ['安靜聊天','一起散步','看劇放空','吃點好吃的'],['火鍋','壽司','義大利麵','簡單便當'],['先抱抱','先聽他說','幫忙想辦法','給他一點空間'],['咖啡廳','展覽','戶外走走','在家休息'],['被記得','被稱讚','被照顧','被理解'],['甜點','小卡片','實用小物','一段時間陪伴'],['早點睡','一起吃早餐','每日散步','睡前聊天'],['自然生活感','可愛搞怪','正式紀念','旅行感'],['我在這裡','你已經很棒了','慢慢來沒關係','今天辛苦了'],['海邊','山上','老街','溫泉'],['鼓勵','協助','陪伴','肯定'],['語言','料理','運動','手作'],['舒服','新鮮','有儀式感','不用趕'],['咖啡','手搖飲','熱茶','氣泡水'],['第一次約會','一次旅行','某個晚餐','一起完成的事'],['抱枕','香氛','小燈','照片']
+  ];
+  const intensities=['輕量','普通','深度'];
+  const arr=[];let i=0;
+  for(const c of categories){for(const stem of stems){for(const opts of optionSets){
+    arr.push({id:`chem_choice_${String(i+1).padStart(5,'0')}`,title:stem,options:[...opts],category:c,intensity:intensities[i%intensities.length],semanticKey:`${c}_${i%37}`,ideaKey:`choice_${i%89}`});
+    i++; if(arr.length>=2304)return arr;
+  }}}
+  return arr;
+}
+
 export const closeTodayCards=buildCloseTodayCards();
 export const chemistryChallengeCards=buildChemistryCards();
+export const chemistryChoiceCards=buildChemistryChoiceCards();
+
+function buildRelationshipLetterPrompts(){
+  const categories=['感謝','鼓勵','回憶','期待','道歉','願望','深聊','日常分享','安全感','共同成長','陪伴','小浪漫'];
+  const topics=[
+    '寫下一件今天想謝謝對方的事。','告訴對方今天哪一句話會讓你安心。','分享一個最近想到對方的瞬間。','寫一段今天想給對方的鼓勵。','告訴對方你最近最期待一起完成的小事。','寫下你想一起重溫的一個回憶。','說說今天最希望對方理解你的地方。','告訴對方最近讓你覺得被愛的一件事。','寫一個你想和對方一起實現的小願望。','如果今天可以送對方一句話，你會寫什麼？','分享一件你想慢慢和對方變好的事。','寫下你想對對方說但平常不好意思說的話。','今天有沒有一件事讓你想靠近對方一點？','告訴對方你希望下次見面可以一起做什麼。','寫一段給未來你們看的小留言。','如果今天要幫對方補充能量，你想說什麼？'
+  ];
+  const details=['不用寫很長，真誠就很好。','可以像短訊息，也可以像一封小信。','這題不比對答案，只用來留下回憶。','對方之後上線就能看到。','可以寫給今天的對方，也可以寫給未來的你們。','適合睡前、通勤或想念對方時完成。','可以回答問題，也可以當成一封信寄出。','不完成不扣分，想寫再寫。','可以用一句話開始，慢慢補充。','如果今天很忙，也可以只寫重點。','把想說的話留給對方之後慢慢看。','這是一個給彼此保存小回憶的題目。'];
+  const types=['question','letter'];
+  const intensities=['輕量','普通','深度'];
+  const arr=[];let i=0;
+  for(const c of categories){for(const t of topics){for(const d of details){
+    const type=types[i%2];
+    arr.push({id:`letter_prompt_${String(i+1).padStart(5,'0')}`,title:t,type,category:c,intensity:intensities[i%3],content:d,semanticKey:`letter_${c}_${i%53}`,ideaKey:`letter_idea_${i%127}`,enabled:true});
+    i++; if(arr.length>=2304)return arr;
+  }}}
+  return arr;
+}
+export const relationshipLetterPrompts=buildRelationshipLetterPrompts();
 export const dateIdeaCards=buildDateIdeaCards();
 export const deepTalkCards=buildDeepTalkCards();
 export const coupleTasks=closeTodayCards.map(c=>({id:c.id,title:c.title,category:c.category,description:c.content,intimacy:c.reward.intimacy,harmony:c.reward.chemistry,heartbeat:c.reward.heartbeat,companionship:c.reward.heartbeat,semanticKey:c.semanticKey,ideaKey:c.ideaKey}));

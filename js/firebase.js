@@ -1,6 +1,6 @@
 import { state, saveState, replaceState, PHASE1_TABLES, KEY, nowIso } from './state.js';
 
-export const firebaseConfig={apiKey: "AIzaSyCH027zWsaR-S8qCRDCcaDcvGFP0BQGbUA",authDomain: "habitrelation.firebaseapp.com",projectId: "habitrelation",storageBucket: "habitrelation.firebasestorage.app",messagingSenderId: "830734839933",appId: "1:830734839933:web:1795a56d42e68512e08114",measurementId: "G-D98929ZP63"};
+export const firebaseConfig={apiKey:'',authDomain:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
 
 let app=null,auth=null,db=null,modules=null,authBound=false;
 let applyingRemote=false,syncTimer=null,autoTimer=null,inFlight=null;
@@ -55,6 +55,38 @@ function chunkDoc(scope,tableName,chunkId,roomCode=''){
 }
 function legacyUserRef(){const u=currentUser();return u?modules.doc(db,'users',u.uid,'app','habitMission'):null}
 
+function roomCode(){return state.room?.inviteCode||state.room?.id||state.firebase?.roomId||''}
+function roomRef(code=roomCode()){return code?modules.doc(db,'rooms',safeId(code)):null}
+function roomPartnerUid(){
+  const me=userId();
+  const room=state.room||{};
+  const ids=[...(room.memberIds||[]),...(Array.isArray(room.members)?room.members.map(x=>x?.uid||x?.id||x):[]),...(isRecord(room.members)?Object.keys(room.members):[]),...(state.users||[]).map(u=>u?.id||u?.uid)].filter(Boolean).map(String);
+  return ids.find(id=>id&&id!==me&&id!=='me'&&id!=='local'&&id!=='user2')||'';
+}
+function setRoomMembershipDiagnostic(patch={}){
+  state.syncMeta={...(state.syncMeta||{}),roomMembership:{...(state.syncMeta?.roomMembership||{}),...patch,checkedAt:now()},updatedAt:now(),version:state.version};
+}
+export async function ensureRoomDocument(code=roomCode()){
+  if(!canSync()||!currentUser()||!code){setRoomMembershipDiagnostic({roomId:code||'',hasRoomDoc:false,currentUid:userId(),currentUidInMembers:false,currentUidInMemberIds:false,partnerUid:roomPartnerUid(),partnerUidKnown:!!roomPartnerUid(),partnerUidInMembers:false,safeRulesReady:false,message:!code?'尚未建立或加入房間':'尚未登入或 Firebase 未設定'});return false}
+  try{
+    const ref=roomRef(code);const uid=userId();const partner=roomPartnerUid();
+    const snap=await modules.getDoc(ref);const existing=snap.exists()?(snap.data()||{}):{};
+    const members={...(isRecord(existing.members)?existing.members:{}),...(isRecord(state.room?.members)?state.room.members:{})};
+    members[uid]=true;if(partner)members[partner]=true;
+    const existingIds=Array.isArray(existing.memberIds)?existing.memberIds:[];
+    const stateIds=Array.isArray(state.room?.memberIds)?state.room.memberIds:[];
+    const memberIds=[...new Set([...existingIds,...stateIds,...Object.keys(members),uid,partner].filter(Boolean).map(String))];
+    const payload={roomId:String(code),members,memberIds,updatedAt:now(),version:state.version};
+    if(!existing.createdAt)payload.createdAt=now();
+    await modules.setDoc(ref,payload,{merge:true});
+    state.room={...(state.room||{}),id:state.room?.id||String(code),inviteCode:state.room?.inviteCode||String(code),members,memberIds,updatedAt:now()};
+    setRoomMembershipDiagnostic({roomId:String(code),hasRoomDoc:true,currentUid:uid,currentUidInMembers:members[uid]===true,currentUidInMemberIds:memberIds.includes(uid),partnerUid:partner,partnerUidKnown:!!partner,partnerUidInMembers:partner?members[partner]===true:false,partnerUidInMemberIds:partner?memberIds.includes(partner):false,safeRulesReady:!!(members[uid]===true&&memberIds.includes(uid)&&partner&&members[partner]===true&&memberIds.includes(partner)),message:partner?'已補齊 room membership':'已補齊目前使用者，等待對方登入 / 加入房間'});
+    return true;
+  }catch(e){console.warn('ensureRoomDocument failed',e);setRoomMembershipDiagnostic({roomId:String(code),hasRoomDoc:false,currentUid:userId(),partnerUid:roomPartnerUid(),error:readableError(e),safeRulesReady:false,message:'room membership 檢查失敗，目前仍可使用寬鬆 rules 同步'});return false}
+}
+export async function ensureRoomMembership(code=roomCode()){return ensureRoomDocument(code)}
+export async function repairRoomMembershipIfMissing(code=roomCode()){return ensureRoomDocument(code)}
+
 export async function initFirebase(){
   if(!hasConfig()){setStatus('本機模式','找不到 Firebase 設定，已保存於本機。');return false}
   try{
@@ -68,6 +100,7 @@ export async function initFirebase(){
           state.firebase={...(state.firebase||{}),user:{uid:u.uid,email:u.email,name:u.displayName},syncStatus:'登入後同步中',syncError:''};
           saveState({touch:false,emit:false,source:'auth'});
           startAutoSync();
+          await ensureRoomMembership();
           await syncLatestWithCloud('login');
           window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'login'}}));
         }else{
@@ -81,7 +114,7 @@ export async function initFirebase(){
     return true;
   }catch(e){console.warn(e);setStatus('Firebase 初始化失敗',readableError(e));return false}
 }
-export async function signInWithGoogle(){if(!await initFirebase())return false;const m=await loadModules();const res=await m.signInWithPopup(auth,new m.GoogleAuthProvider());state.firebase={...(state.firebase||{}),user:{uid:res.user.uid,email:res.user.email,name:res.user.displayName},syncStatus:'登入後同步中',syncError:''};saveState({touch:false,emit:false,source:'auth'});startAutoSync();await syncLatestWithCloud('signin');window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'signin'}}));return true}
+export async function signInWithGoogle(){if(!await initFirebase())return false;const m=await loadModules();const res=await m.signInWithPopup(auth,new m.GoogleAuthProvider());state.firebase={...(state.firebase||{}),user:{uid:res.user.uid,email:res.user.email,name:res.user.displayName},syncStatus:'登入後同步中',syncError:''};saveState({touch:false,emit:false,source:'auth'});startAutoSync();await ensureRoomMembership();await syncLatestWithCloud('signin');window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'signin'}}));return true}
 export async function signOutGoogle(){stopAutoSync();if(auth)await auth.signOut();state.firebase={...(state.firebase||{}),user:null,syncStatus:'已登出',syncError:''};saveState({touch:false,emit:false,source:'auth'})}
 
 function makePreSyncBackup(){try{localStorage.setItem(PRE_SYNC_KEY,JSON.stringify({createdAt:now(),state:clone(state)}));updateSyncMeta({hasPreSyncBackup:true,preSyncBackupAt:now()});return true}catch{return false}}
@@ -140,6 +173,7 @@ export async function syncLatestWithCloud(reason='manual'){
     if(!await initFirebase()){setStatus('本機模式','找不到 Firebase 設定，已保存於本機。',{reason});return false}
     if(!currentUser()){setStatus('本機模式','尚未登入，已保存於本機。',{reason});return false}
     if(applyingRemote)return false;
+    await ensureRoomMembership();
     setStatus('同步中','',{reason,syncMeta:{syncing:true,lastSyncStartAt:now()}});
     makePreSyncBackup();
     const remote=await readRemoteUserState();
@@ -160,5 +194,5 @@ export async function lifecycleSync(){return syncLatestWithCloud('lifecycle')}
 export async function syncAllNow(){const userOk=await syncLatestWithCloud('manual');const roomOk=await pushRoomToCloud();return userOk||roomOk}
 export async function pullUserFromCloud(){const remote=await readRemoteUserState();if(!remote)return false;makePreSyncBackup();applyingRemote=true;replaceState(withAuth(smartMergeState(state,remote)),{touch:false,emit:false,source:'cloudMultiDoc'});applyingRemote=false;window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'pullUser'}}));return true}
 export async function pushUserToCloud(){if(!await initFirebase()||!currentUser())return false;makePreSyncBackup();await writeRemoteUserState(state);setStatus('已同步：本機覆蓋雲端','');return true}
-export async function pushRoomToCloud(){if(applyingRemote)return false;if(!await initFirebase()||!currentUser()||!state.room?.inviteCode)return false;try{return await writeRoomState(state.room.inviteCode,state)}catch(e){console.warn(e);setStatus('同步失敗',readableError(e));return false}}
-export async function pullRoomFromCloud(code){if(!await initFirebase()||!currentUser()||!code)return false;const remote=await readRoomState(code);if(remote){makePreSyncBackup();applyingRemote=true;replaceState(withAuth(smartMergeState(state,remote)),{touch:false,emit:false,source:'roomMultiDoc'});applyingRemote=false;window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'room'}}));return true}return false}
+export async function pushRoomToCloud(){if(applyingRemote)return false;if(!await initFirebase()||!currentUser()||!state.room?.inviteCode)return false;try{await ensureRoomMembership(state.room.inviteCode);return await writeRoomState(state.room.inviteCode,state)}catch(e){console.warn(e);setStatus('同步失敗',readableError(e));return false}}
+export async function pullRoomFromCloud(code){if(!await initFirebase()||!currentUser()||!code)return false;await ensureRoomMembership(code);const remote=await readRoomState(code);if(remote){makePreSyncBackup();applyingRemote=true;replaceState(withAuth(smartMergeState(state,remote)),{touch:false,emit:false,source:'roomMultiDoc'});applyingRemote=false;window.dispatchEvent(new CustomEvent('habit-remote-updated',{detail:{reason:'room'}}));return true}return false}

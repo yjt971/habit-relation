@@ -7,7 +7,7 @@
   "orientation": "portrait",
   "background_color": "#fff7fb",
   "theme_color": "#8b5cf6",
-  "description": "v15.0.0-stable：多文件同步、設定 / 備份拆分、統計戰報摘要修正。",
+  "description": "v15.1.0-stable：關係互動總驗收與穩定版輸出。",
   "icons": [
     {"src":"./icons/icon-192x192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
     {"src":"./icons/icon-512x512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},

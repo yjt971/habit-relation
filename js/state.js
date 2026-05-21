@@ -3,8 +3,8 @@ import { normalizeRule, periodKey } from './frequency.js';
 
 export const KEY='habitMissionPhase1FullTablesState';
 export const LEGACY_KEYS=['habitMissionPhase0StableState','habitMissionFrequencyRuleV4_randomMissions'];
-export const APP_VERSION='15.0.0-stable-hotfix1';
-export const PHASE1_TABLES=['users','habits','habitLogs','dailyTasks','dailyPacks','flexTasks','secretTasks','pointsLedger','rewards','rewardRedemptions','gameItems','gameLogs','quests','questProgress','achievements','streakRewards','weeklyReviews','monthlyReports','adventureLogs','couplePointsLedger','sharedQuests','sharedQuestProgress','sharedTasks','sharedTaskProgress','sharedTaskChangeRequests','sharedRewards','sharedRewardRedemptions','coupleStats','coupleSecretTasks','coupleChallenges','coupleChallengeProgress','coupleBosses','bossDamageLogs','bossRewards','bossBattleReports','coupleBattleReports','reports','reportSnapshots','coupleTitles','bossItems','mapNodes','mapProgress','mapSideQuests','mapSideQuestProgress','mapExploreObjects','mapExploreLogs','mapHiddenQuests','mapQuestProgress','mapTravelCoupons','mapTravelLogs','mapRewards','abilityEffects','settings','syncMeta','levelData','attributeLogs','storyChapters','assignedTasks','rescueTemplates','rescueLogs','taskSwapLogs','itemUseLogs','mapInventory','mapInventoryLogs','mapExploreDailyLogs','activeItemEffects','habitRewardRules','habitRewardLogs','assignedTaskChangeRequests','assignedTaskRewards','assignedTaskLogs','legacyRewardPlans','closeTodayCards','chemistryChallengeCards','dateIdeaCards','deepTalkCards','relationshipStats','relationshipLogs','coupleWishPool','coupleWishLogs','relationshipChests','relationshipChestLogs','relationshipReviews','relationshipReviewSnapshots','cardDrawLogs','cardCollectionLogs'];
+export const APP_VERSION='15.1.0-stable';
+export const PHASE1_TABLES=['users','habits','habitLogs','dailyTasks','dailyPacks','flexTasks','secretTasks','pointsLedger','rewards','rewardRedemptions','gameItems','gameLogs','quests','questProgress','achievements','streakRewards','weeklyReviews','monthlyReports','adventureLogs','couplePointsLedger','sharedQuests','sharedQuestProgress','sharedTasks','sharedTaskProgress','sharedTaskChangeRequests','sharedRewards','sharedRewardRedemptions','coupleStats','coupleSecretTasks','coupleChallenges','coupleChallengeProgress','coupleBosses','bossDamageLogs','bossRewards','bossBattleReports','coupleBattleReports','reports','reportSnapshots','coupleTitles','bossItems','mapNodes','mapProgress','mapSideQuests','mapSideQuestProgress','mapExploreObjects','mapExploreLogs','mapHiddenQuests','mapQuestProgress','mapTravelCoupons','mapTravelLogs','mapRewards','abilityEffects','settings','syncMeta','levelData','attributeLogs','storyChapters','assignedTasks','rescueTemplates','rescueLogs','taskSwapLogs','itemUseLogs','mapInventory','mapInventoryLogs','mapExploreDailyLogs','activeItemEffects','habitRewardRules','habitRewardLogs','assignedTaskChangeRequests','assignedTaskRewards','assignedTaskLogs','legacyRewardPlans','closeTodayCards','chemistryChallengeCards','dateIdeaCards','deepTalkCards','relationshipStats','relationshipLogs','coupleWishPool','coupleWishLogs','relationshipChests','relationshipChestLogs','relationshipReviews','relationshipReviewSnapshots','cardDrawLogs','cardCollectionLogs','chemistryChallengeSessions','chemistryChallengeAnswers','coupleLetters','coupleLetterReplies','coupleLetterLogs'];
 
 export const todayKey=(date=new Date())=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 export const uid=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
@@ -125,7 +125,12 @@ export const defaultState=()=>({
   relationshipReviewSnapshots:[],
   cardDrawLogs:[],
   cardCollectionLogs:[],
-  currentRelationshipCards:{date:'',closeTodayId:'',closeTodaySwapped:false,chemistryId:'',dateIdeaId:'',deepTalkId:''}
+  chemistryChallengeSessions:[],
+  chemistryChallengeAnswers:[],
+  coupleLetters:[],
+  coupleLetterReplies:[],
+  coupleLetterLogs:[],
+  currentRelationshipCards:{date:'',closeTodayId:'',closeTodaySwapped:false,chemistryId:'',chemistryChoiceId:'',letterPromptId:'',dateIdeaId:'',deepTalkId:''}
 });
 
 
@@ -144,6 +149,25 @@ function migrateQuestsIntoRewardRules(s){
     }
   }
 }
+
+export function getCurrentRoomId(stateRef=state){return stateRef?.room?.inviteCode||stateRef?.room?.id||stateRef?.firebase?.roomId||'local'}
+export function getCurrentUserId(stateRef=state){return stateRef?.firebase?.user?.uid||stateRef?.currentUserId||'me'}
+export function getPartnerUserId(stateRef=state){const me=getCurrentUserId(stateRef);const room=stateRef?.room||{};const ids=[...(room.memberIds||[]),...(Array.isArray(room.members)?room.members.map(x=>x.id||x.uid||x):[]),...Object.keys(room.members||{}),...(stateRef?.users||[]).map(u=>u.id)].filter(Boolean).map(String);return ids.find(id=>id!==me&&id!=='me')||stateRef?.partnerUserId||'user2'}
+export function ensureArrayTable(tableName,stateRef=state){if(!Array.isArray(stateRef[tableName]))stateRef[tableName]=[];return stateRef[tableName]}
+export function createChemistrySessionBase(input={},stateRef=state){const now=nowIso();const dateKey=input.dateKey||todayKey();const roomId=input.roomId||getCurrentRoomId(stateRef);const userId=input.createdBy||getCurrentUserId(stateRef);const options=Array.isArray(input.options)?input.options.slice(0,4):['選項 A','選項 B','選項 C','選項 D'];while(options.length<4)options.push(`選項 ${options.length+1}`);const maxSeq=Math.max(0,...ensureArrayTable('chemistryChallengeSessions',stateRef).filter(x=>x.roomId===roomId&&x.dateKey===dateKey&&!x.deletedAt).map(x=>Number(x.sequenceNo||0)));return withMeta({id:input.id||uid('chemSession'),roomId,dateKey,sequenceNo:Number(input.sequenceNo||maxSeq+1),cardId:input.cardId||'',questionTitle:input.questionTitle||input.title||'尚未設定默契題目',options,category:input.category||'默契',intensity:input.intensity||'輕量',createdBy:userId,targetUserIds:input.targetUserIds||[userId,getPartnerUserId(stateRef)].filter(Boolean),status:input.status||'waiting',result:input.result||null,matchedOptionIndex:input.matchedOptionIndex??null,rewardsGranted:!!input.rewardsGranted,completedAt:input.completedAt||null,createdAt:input.createdAt||now,updatedAt:input.updatedAt||now,deletedAt:input.deletedAt??null,version:input.version||APP_VERSION},'chemistryChallengeSession',stateRef)}
+export function createChemistryAnswerBase(input={},stateRef=state){const now=nowIso();const idx=Number(input.optionIndex??0);const optText=input.optionText||input.options?.[idx]||'';return withMeta({id:input.id||uid('chemAnswer'),sessionId:input.sessionId||'',roomId:input.roomId||getCurrentRoomId(stateRef),userId:input.userId||getCurrentUserId(stateRef),optionIndex:idx,optionText:optText,answeredAt:input.answeredAt||now,createdAt:input.createdAt||now,updatedAt:input.updatedAt||now,deletedAt:input.deletedAt??null,version:input.version||APP_VERSION},'chemistryChallengeAnswer',stateRef)}
+export function createCoupleLetterBase(input={},stateRef=state){const now=nowIso();return withMeta({id:input.id||uid('letter'),roomId:input.roomId||getCurrentRoomId(stateRef),dateKey:input.dateKey||todayKey(),promptId:input.promptId||'',promptTitle:input.promptTitle||input.title||'今日小信箱',promptType:input.promptType||'letter',fromUserId:input.fromUserId||getCurrentUserId(stateRef),toUserId:input.toUserId||getPartnerUserId(stateRef),content:input.content||'',status:input.status||'draft',isFavorite:!!input.isFavorite,createdAt:input.createdAt||now,readAt:input.readAt||null,updatedAt:input.updatedAt||now,deletedAt:input.deletedAt??null,version:input.version||APP_VERSION},'coupleLetter',stateRef)}
+export function createCoupleLetterReplyBase(input={},stateRef=state){const now=nowIso();return withMeta({id:input.id||uid('letterReply'),letterId:input.letterId||'',roomId:input.roomId||getCurrentRoomId(stateRef),fromUserId:input.fromUserId||getCurrentUserId(stateRef),toUserId:input.toUserId||getPartnerUserId(stateRef),content:input.content||'',createdAt:input.createdAt||now,updatedAt:input.updatedAt||now,deletedAt:input.deletedAt??null,version:input.version||APP_VERSION},'coupleLetterReply',stateRef)}
+export function createCoupleLetterLogBase(input={},stateRef=state){const now=nowIso();return withMeta({id:input.id||uid('letterLog'),letterId:input.letterId||'',roomId:input.roomId||getCurrentRoomId(stateRef),actionType:input.actionType||'sent',userId:input.userId||getCurrentUserId(stateRef),note:input.note||'',createdAt:input.createdAt||now,updatedAt:input.updatedAt||now,deletedAt:input.deletedAt??null,version:input.version||APP_VERSION},'coupleLetterLog',stateRef)}
+export function normalizeRelationshipAsyncTables(stateRef=state){
+  stateRef.chemistryChallengeSessions=dedupeById(ensureArrayTable('chemistryChallengeSessions',stateRef).map(x=>createChemistrySessionBase(x,stateRef)),'chemistryChallengeSession',stateRef);
+  stateRef.chemistryChallengeAnswers=dedupeById(ensureArrayTable('chemistryChallengeAnswers',stateRef).map(x=>createChemistryAnswerBase(x,stateRef)),'chemistryChallengeAnswer',stateRef);
+  stateRef.coupleLetters=dedupeById(ensureArrayTable('coupleLetters',stateRef).map(x=>createCoupleLetterBase(x,stateRef)),'coupleLetter',stateRef);
+  stateRef.coupleLetterReplies=dedupeById(ensureArrayTable('coupleLetterReplies',stateRef).map(x=>createCoupleLetterReplyBase(x,stateRef)),'coupleLetterReply',stateRef);
+  stateRef.coupleLetterLogs=dedupeById(ensureArrayTable('coupleLetterLogs',stateRef).map(x=>createCoupleLetterLogBase(x,stateRef)),'coupleLetterLog',stateRef);
+  return stateRef;
+}
+
 export let state=loadState();
 
 
@@ -352,7 +376,8 @@ export function migrate(input){
   s.relationshipReviewSnapshots=dedupeById(Array.isArray(s.relationshipReviewSnapshots)?s.relationshipReviewSnapshots:[],'relationshipReviewSnapshot',s);
   s.cardDrawLogs=dedupeById(Array.isArray(s.cardDrawLogs)?s.cardDrawLogs:[],'cardDrawLog',s);
   s.cardCollectionLogs=dedupeById(Array.isArray(s.cardCollectionLogs)?s.cardCollectionLogs:[],'cardCollectionLog',s);
-  s.currentRelationshipCards={date:'',closeTodayId:'',closeTodaySwapped:false,chemistryId:'',dateIdeaId:'',deepTalkId:'',...(isObj(s.currentRelationshipCards)?s.currentRelationshipCards:{})};
+  normalizeRelationshipAsyncTables(s);
+  s.currentRelationshipCards={date:'',closeTodayId:'',closeTodaySwapped:false,chemistryId:'',chemistryChoiceId:'',letterPromptId:'',dateIdeaId:'',deepTalkId:'',...(isObj(s.currentRelationshipCards)?s.currentRelationshipCards:{})};
   s.adventure.logs=dedupeById(s.adventure.logs,'adventure',s);
   s.importedStats=dedupeById(Array.isArray(s.importedStats)?s.importedStats:[],'importedStat',s);
   return mirrorLegacyTables(s);
